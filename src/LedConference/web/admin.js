@@ -17,7 +17,7 @@ const ACTIONS = {
   'room.create': 'Thêm phòng', 'room.update': 'Sửa phòng', 'room.delete': 'Xoá phòng', import: 'Nhập Excel',
   'settings.update': 'Sửa cấu hình', 'place.assign': 'Gán địa điểm', 'place.ignore': 'Bỏ qua địa điểm',
   'place.unignore': 'Bỏ đánh dấu địa điểm', 'theme.create': 'Tạo mẫu', 'theme.update': 'Sửa mẫu', 'theme.delete': 'Xoá mẫu',
-  'theme.reset': 'Khôi phục mẫu', 'logo.update': 'Đổi logo', 'logo.delete': 'Xoá logo',
+  'theme.reset': 'Khôi phục mẫu', 'logo.update': 'Đổi logo', 'logo.delete': 'Xoá logo', cleanup: 'Tự xoá dữ liệu cũ',
 };
 
 // Page state that survives navigation between routes.
@@ -532,7 +532,10 @@ function systemCard(settings) {
   return card('Thông tin hệ thống', 'Các mục này sửa trong file data\\settings.json trên máy chủ, rồi khởi động lại dịch vụ.',
     h('div', { class: 'small' }, `Cổng màn hình: ${settings.screenPort} · Cổng quản trị: ${settings.adminPort}`),
     h('div', { class: 'small' }, 'Máy được phép quản trị: ' + (settings.adminAllow.includes('0.0.0.0/0') ? 'mọi máy trong mạng'
-      : settings.adminAllow.length ? settings.adminAllow.join(', ') : 'chỉ máy chủ')));
+      : settings.adminAllow.length ? settings.adminAllow.join(', ') : 'chỉ máy chủ')),
+    h('div', { class: 'small' }, settings.retentionDays > 0
+      ? `Tự xoá dữ liệu cũ hơn ${settings.retentionDays} ngày (cuộc họp, file Excel đã nhập, nhật ký, bản sao lưu).`
+      : 'Không tự xoá dữ liệu cũ.'));
 }
 
 function auditCard(audit) {

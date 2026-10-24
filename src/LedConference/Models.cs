@@ -102,6 +102,8 @@ public sealed record Settings
     public List<string> IgnoredPlaces { get; init; } = [];
     // Bumped on each logo upload so screens re-fetch /logo?v=N.
     public int LogoVersion { get; init; }
+    // Meetings, imported Excel files, audit lines and backups older than this many days are deleted. 0 = keep everything.
+    public int RetentionDays { get; init; } = 30;
 }
 
 public sealed record ImportRecord(string Id, DateTime At, string Ip, string FileName, DateOnly From, DateOnly To, int Total);

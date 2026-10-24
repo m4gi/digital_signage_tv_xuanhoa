@@ -12,6 +12,7 @@
     <Compile Include="..\..\src\LedConference\Models.cs" />
     <Compile Include="..\..\src\LedConference\Screen.cs" />
     <Compile Include="..\..\src\LedConference\WeekExcel.cs" />
+    <Compile Include="..\..\src\LedConference\Store.cs" />
   </ItemGroup>
 
   <ItemGroup>

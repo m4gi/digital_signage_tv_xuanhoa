@@ -123,6 +123,43 @@ Check(!oldFormat.Contains("skyline") && loaded.Skyline == "#FFFFFF" && loaded.Sk
     "a themes.json written before the skyline fields still loads, with defaults");
 Check((official with { Skyline = "#12345" }).Problems().ContainsKey("skyline"), "skyline color is validated");
 
+// ---------- Retention (real Store in a temp folder) ----------
+
+var tmp = Directory.CreateTempSubdirectory("ledconf-selfcheck-").FullName;
+try
+{
+    var store = new Store(tmp);
+    var todayD = DateOnly.FromDateTime(DateTime.Now);
+    var cutoff = todayD.AddDays(-30);
+    Directory.CreateDirectory(Path.Combine(tmp, "imports"));
+    foreach (var id in new[] { "imp_old", "imp_new" }) File.WriteAllText(Path.Combine(tmp, "imports", id + ".xlsx"), "x");
+    store.Edit("test", "seed", "data", d =>
+    {
+        d.Meetings.AddRange([M("old", 8, 9) with { Date = cutoff.AddDays(-1) }, M("edge", 8, 9) with { Date = cutoff }, M("new", 8, 9) with { Date = todayD }]);
+        d.Imports.Add(new ImportRecord("imp_old", DateTime.Now.AddDays(-31), "test", "a.xlsx", cutoff, cutoff, 1));
+        d.Imports.Add(new ImportRecord("imp_new", DateTime.Now, "test", "b.xlsx", todayD, todayD, 1));
+        return null;
+    });
+    store.Prune(cutoff);
+    Check(Ids(store.Current.Meetings) == "edge,new", "meetings dated before the cutoff are removed, the cutoff day itself is kept");
+    Check(store.Current.Imports.Select(i => i.Id).SequenceEqual(["imp_new"]) && !File.Exists(Path.Combine(tmp, "imports", "imp_old.xlsx"))
+        && File.Exists(Path.Combine(tmp, "imports", "imp_new.xlsx")), "old import record and its saved .xlsx are removed, recent ones kept");
+    var reloaded = new Store(tmp);
+    Check(Ids(reloaded.Current.Meetings) == "edge,new", "cleanup is saved to meetings.json");
+
+    var log = Path.Combine(tmp, "audit.log");
+    File.AppendAllText(log, $"{{\"at\":\"{cutoff.AddDays(-2):yyyy-MM-dd}T10:00:00\",\"ip\":\"x\",\"action\":\"old\"}}\nnot json\n");
+    var removedLines = reloaded.PruneAudit(cutoff);
+    var lines = File.ReadAllLines(log);
+    Check(removedLines == 1 && lines.Contains("not json") && lines.Any(l => l.Contains("\"cleanup\"")),
+        "audit.log drops lines before the cutoff, keeps unreadable lines and the cleanup entry");
+    Check(new Settings().RetentionDays == 30, "retention defaults to 30 days");
+}
+finally
+{
+    Directory.Delete(tmp, true);
+}
+
 Console.WriteLine("SelfCheck OK");
 
 static string Key(Meeting m) =>

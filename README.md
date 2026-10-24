@@ -132,11 +132,16 @@ Mọi dữ liệu nằm trong `data\` cạnh `LedConference.exe`:
 | `rooms.json` | Phòng, địa điểm khớp, giao diện riêng |
 | `settings.json`, `themes.json` | Cấu hình, các mẫu giao diện |
 | `imports\` | File Excel gốc của từng lần nhập |
-| `backup\` | Bản sao `meetings.json` mỗi ngày, giữ 30 ngày |
+| `backup\` | Bản sao `meetings.json` mỗi ngày, giữ theo `retentionDays` (mặc định 30 ngày) |
 | `audit.log` | Nhật ký thao tác (lúc nào, máy nào, làm gì) |
 | `logo.*` | Logo đã đổi (nếu có) |
 
-- **Sao lưu**: copy cả thư mục `data\` (có thể copy khi dịch vụ đang chạy).
+- **Tự xoá dữ liệu cũ**: lúc khởi động và mỗi 12 giờ, máy chủ xoá cuộc họp có ngày họp cũ hơn `retentionDays` ngày
+  (mặc định 30, trong `data\settings.json`), file Excel đã nhập và dòng nhật ký cũ hơn mốc đó, cùng bản sao lưu cũ.
+  Mỗi lần xoá được ghi vào nhật ký (“Tự xoá dữ liệu cũ”). Đặt `"retentionDays": 0` để giữ mãi; đổi số này xong phải
+  khởi động lại dịch vụ.
+- **Sao lưu**: copy cả thư mục `data\` (có thể copy khi dịch vụ đang chạy). Muốn giữ lịch họp lâu hơn 30 ngày thì
+  tăng `retentionDays` hoặc sao lưu `data\` định kỳ ra chỗ khác.
 - **Khôi phục lịch về một ngày trước**: dừng dịch vụ, chép `backup\meetings-YYYYMMDD.json` đè lên `meetings.json`,
   khởi động lại.
 

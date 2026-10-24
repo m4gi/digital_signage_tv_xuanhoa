@@ -97,7 +97,41 @@ public sealed class Store
         }
     }
 
-    // Reads the whole log; rotate audit.log yearly if it grows large.
+    // Drops meetings dated before `cutoff` and imports made before it (with their saved .xlsx). Audited as "cleanup".
+    public void Prune(DateOnly cutoff)
+    {
+        var d = current;
+        if (!d.Meetings.Any(m => m.Date < cutoff) && !d.Imports.Any(i => DateOnly.FromDateTime(i.At) < cutoff)) return;
+        Edit("system", "cleanup", "data", next =>
+        {
+            var meetings = next.Meetings.RemoveAll(m => m.Date < cutoff);
+            var old = next.Imports.Where(i => DateOnly.FromDateTime(i.At) < cutoff).ToList();
+            foreach (var i in old)
+            {
+                next.Imports.Remove(i);
+                File.Delete(Path.Combine(PathOf("imports"), i.Id + ".xlsx"));
+            }
+            return new { before = cutoff, meetings, imports = old.Count };
+        });
+    }
+
+    // Keeps only audit lines from `cutoff` on. Lines that cannot be read are kept rather than lost.
+    public int PruneAudit(DateOnly cutoff)
+    {
+        lock (gate)
+        {
+            var path = PathOf("audit.log");
+            if (!File.Exists(path)) return 0;
+            var lines = File.ReadAllLines(path);
+            var keep = lines.Where(l => !(AuditDate(l) is { } at && at < cutoff)).ToList();
+            if (keep.Count == lines.Length) return 0;
+            File.WriteAllLines(path + ".tmp", keep);
+            File.Move(path + ".tmp", path, overwrite: true);
+            return lines.Length - keep.Count;
+        }
+    }
+
+    // Reads the whole log; old lines are pruned by PruneAudit, so it stays small.
     public List<JsonElement> ReadAudit(int limit)
     {
         lock (gate)
@@ -106,6 +140,20 @@ public sealed class Store
             if (!File.Exists(path)) return [];
             return File.ReadLines(path).TakeLast(limit).Reverse()
                 .Select(l => JsonDocument.Parse(l).RootElement.Clone()).ToList();
+        }
+    }
+
+    static DateOnly? AuditDate(string line)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            return doc.RootElement.TryGetProperty("at", out var at) && DateTime.TryParse(at.GetString(), out var t)
+                ? DateOnly.FromDateTime(t) : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
@@ -151,7 +199,7 @@ public sealed class Store
         File.Move(path + ".tmp", path, overwrite: true);
     }
 
-    // Keeps the first meetings.json of each day for 30 days.
+    // Keeps the first meetings.json of each day, for Settings.RetentionDays days (all of them when 0).
     void Backup()
     {
         var src = PathOf("meetings.json");
@@ -160,7 +208,9 @@ public sealed class Store
         var dst = Path.Combine(backupDir, $"meetings-{DateTime.Now:yyyyMMdd}.json");
         if (File.Exists(dst)) return;
         File.Copy(src, dst);
+        var days = current.Settings.RetentionDays;
+        if (days <= 0) return;
         foreach (var f in Directory.GetFiles(backupDir, "meetings-*.json"))
-            if (File.GetCreationTime(f) < DateTime.Now.AddDays(-30)) File.Delete(f);
+            if (File.GetCreationTime(f) < DateTime.Now.AddDays(-days)) File.Delete(f);
     }
 }

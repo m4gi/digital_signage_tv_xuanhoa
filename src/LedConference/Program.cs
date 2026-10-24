@@ -45,6 +45,23 @@ void ThemesChanged(object? sender, FileSystemEventArgs e) => themeReload.Change(
 themeWatcher.Changed += ThemesChanged;
 themeWatcher.Created += ThemesChanged;
 themeWatcher.Renamed += ThemesChanged;
+
+// Deletes data older than Settings.RetentionDays: at startup, then every 12 hours.
+var cleanup = new Timer(_ =>
+{
+    try
+    {
+        var days = store.Current.Settings.RetentionDays;
+        if (days <= 0) return;
+        var cutoff = DateOnly.FromDateTime(DateTime.Now).AddDays(-days);
+        store.Prune(cutoff);
+        store.PruneAudit(cutoff);
+    }
+    catch (Exception e)
+    {
+        app.Logger.LogError(e, "Tự xoá dữ liệu cũ thất bại");
+    }
+}, null, TimeSpan.Zero, TimeSpan.FromHours(12));
 app.UseStatusCodePages(); // empty error responses (e.g. malformed JSON) get a ProblemDetails body too
 
 // Screen port: read-only screen paths only. Admin port: allowlisted IPs (loopback always), same-origin writes.
