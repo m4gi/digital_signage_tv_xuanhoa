@@ -6,6 +6,16 @@ Cổng này chỉ đọc, không cần đăng nhập, cho phép gọi từ mọi
 `apiVersion` hiện là **1**. Máy chủ chỉ tăng số này khi đổi API theo cách làm app cũ hỏng
 (bỏ hoặc đổi nghĩa một trường). Thêm trường mới không tăng `apiVersion`; app phải bỏ qua trường lạ.
 
+## `GET /api/screens`
+
+Danh sách phòng, dùng để app màn hình nhận ra máy chủ trong mạng LAN và cho chọn phòng.
+
+```json
+{ "app": "LedConference", "apiVersion": 1,
+  "org": { "line1": "ỦY BAN NHÂN DÂN", "line2": "PHƯỜNG XUÂN HÒA" },
+  "rooms": [ { "code": "P201", "name": "Phòng họp tầng 2" } ] }
+```
+
 ## `GET /api/screens/{mã phòng}`
 
 Gọi mỗi 60 giây. Header trả về có `Cache-Control: no-store`.

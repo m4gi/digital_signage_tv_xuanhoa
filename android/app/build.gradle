@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = 'vn.xuanhoa.ledconference'
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = 'vn.xuanhoa.ledconference'
+        minSdk = 21
+        targetSdk = 37
+        versionCode = 1
+        versionName = '1.0.0'
+    }
+
+    // The screen page is bundled straight from the server's web folder, so both always ship the same version.
+    sourceSets {
+        main.assets.srcDirs = ['../../src/LedConference/web']
+    }
+    androidResources {
+        ignoreAssetsPattern = '!admin.*'
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+}

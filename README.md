@@ -60,6 +60,17 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 
 ## 4. Cài màn hình (standee Android)
 
+**Cách 1 – ứng dụng riêng `LichHop.apk` (khuyên dùng)**
+
+1. Cắm dây mạng, chép `LichHop.apk` qua USB, bật “Cho phép cài ứng dụng không rõ nguồn”, cài đặt.
+2. Mở **Lịch họp**: ứng dụng tự quét mạng LAN tìm máy chủ (cổng 8080, 8088, 8090, 18080, 80).
+   Không thấy thì nhập IP máy chủ kèm cổng màn hình, ví dụ `192.168.1.10:8080`, bấm **Kết nối**.
+3. Chọn phòng → màn hình bắt đầu chiếu, luôn sáng, toàn màn hình. Lần sau mở máy là chiếu ngay.
+4. Đổi phòng/máy chủ: bấm **Back** (remote) hoặc **giữ tay lâu** trên màn hình.
+5. Để chắc chắn tự chạy khi bật nguồn: bấm nút Home, chọn **Lịch họp** làm ứng dụng màn hình chính → **Luôn luôn**.
+
+**Cách 2 – Fully Kiosk Browser**
+
 1. Cắm dây mạng, cắm chuột USB, thoát ứng dụng quảng cáo của hãng.
 2. Cài **Fully Kiosk Browser** (tải APK từ fully-kiosk.com, chép qua USB, bật “Cho phép cài ứng dụng không rõ nguồn”).
 3. Trong Fully Kiosk:

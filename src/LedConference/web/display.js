@@ -8,7 +8,10 @@
   var ROW_GAP = 14; // .row margin-bottom in display.css
   var DAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
-  var code = decodeURIComponent(location.pathname.split('/').pop() || '');
+  // Served by the server as /room/{code}, or bundled in the screen app as display.html?server=http://ip:port&room=CODE.
+  var params = new URLSearchParams(location.search);
+  var server = (params.get('server') || '').replace(/\/+$/, '');
+  var code = params.get('room') || decodeURIComponent(location.pathname.split('/').pop() || '');
   var stage = document.getElementById('stage');
   var data = null, version = null, offset = 0, lastOk = null, statusKey = null, page = 0, pages = [];
   var flipStart = Date.now(); // when the current page appeared; re-renders keep it, only a flip resets it
@@ -69,7 +72,8 @@
     $('footer').classList.toggle('hidden', !s.footer);
     $('org1').textContent = d.org.line1;
     $('org2').textContent = d.org.line2;
-    $('logo').style.backgroundImage = 'url("' + d.org.logoUrl + '")';
+    var logo = d.org.logoUrl.charAt(0) === '/' ? server + d.org.logoUrl : d.org.logoUrl;
+    $('logo').style.backgroundImage = 'url("' + logo + '")';
     layout();
   }
 
@@ -283,7 +287,7 @@
   }
 
   function load() {
-    fetch('/api/screens/' + encodeURIComponent(code), { cache: 'no-store' })
+    fetch(server + '/api/screens/' + encodeURIComponent(code), { cache: 'no-store' })
       .then(function (r) {
         if (r.status === 404) throw 404;
         if (!r.ok) throw r.status;

@@ -180,6 +180,20 @@ app.MapDelete("/api/logo", (HttpContext ctx) =>
 
 // ---------- Screen API ----------
 
+// Public room list on the screen port: the screen app uses it to recognise a server on the LAN and to pick a room.
+app.MapGet("/api/screens", (HttpContext ctx) =>
+{
+    ctx.Response.Headers.CacheControl = "no-store";
+    var d = store.Current;
+    return Results.Ok(new
+    {
+        app = "LedConference",
+        apiVersion = 1,
+        org = new { d.Settings.Org.Line1, d.Settings.Org.Line2 },
+        rooms = d.Rooms.Select(r => new { r.Code, r.Name }),
+    });
+});
+
 app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
 {
     ctx.Response.Headers.CacheControl = "no-store";
