@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 8+: the ward logo inside the 66dp safe zone, on white, so every launcher mask keeps it whole. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/surface" />
+    <foreground>
+        <inset android:drawable="@drawable/ic_logo" android:inset="21%" />
+    </foreground>
+</adaptive-icon>

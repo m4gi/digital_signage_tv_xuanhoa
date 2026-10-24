@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV launcher banner (320x180dp): ward logo on brand blue with a gold rule. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <solid android:color="@color/brand" />
+            <size android:width="320dp" android:height="180dp" />
+        </shape>
+    </item>
+    <item android:gravity="bottom" android:height="8dp">
+        <shape><solid android:color="@color/accent" /></shape>
+    </item>
+    <item android:gravity="center" android:width="124dp" android:height="124dp" android:drawable="@drawable/ic_logo" />
+</layer-list>

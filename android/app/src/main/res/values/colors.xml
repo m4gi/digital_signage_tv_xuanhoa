@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ward identity: blue #0C4DA2, gold #FFC72C, white. -->
+<resources>
+    <color name="brand">#0C4DA2</color>
+    <color name="brand_dark">#0B2545</color>
+    <color name="brand_soft">#E3EEFB</color>
+    <color name="accent">#FFC72C</color>
+    <color name="bg">#F3F6FB</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="line">#D5E1F0</color>
+    <color name="ink">#0B2545</color>
+    <color name="muted">#4F6380</color>
+    <color name="ok">#1E9E5A</color>
+    <color name="error">#C62828</color>
+</resources>

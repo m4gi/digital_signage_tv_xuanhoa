@@ -20,6 +20,9 @@ Danh sách phòng, dùng để app màn hình nhận ra máy chủ trong mạng 
 
 Gọi mỗi 60 giây. Header trả về có `Cache-Control: no-store`.
 
+Tham số tuỳ chọn `?client=apk|web|preview`: máy chủ ghi lại IP và giờ lấy lịch của từng màn hình để trang quản trị
+báo “đang chạy / mất kết nối” (quá 3 phút không lấy lịch). `preview` (khung xem trước trong trang quản trị) không được tính.
+
 | Mã | Khi nào |
 |---|---|
 | 200 | Dữ liệu bên dưới |

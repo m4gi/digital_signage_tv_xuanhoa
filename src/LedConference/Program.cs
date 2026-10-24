@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.StaticFiles;
 
 var store = new Store(Path.Combine(AppContext.BaseDirectory, "data"));
 var cfg = store.Current.Settings;
+// Kept in memory only; after a restart the list refills within one poll (60s).
+var screensSeen = new System.Collections.Concurrent.ConcurrentDictionary<(string Room, string Ip), (DateTime At, string Client)>();
 if (cfg.ScreenPort == cfg.AdminPort)
     throw new InvalidOperationException("ScreenPort và AdminPort trong data\\settings.json phải khác nhau.");
 var adminAllow = cfg.AdminAllow.Select(ParseNetwork).ToList();
@@ -71,11 +73,15 @@ app.Use(async (ctx, next) =>
     var headers = ctx.Response.Headers;
     headers.XContentTypeOptions = "nosniff";
     headers["Referrer-Policy"] = "no-referrer";
-    headers.ContentSecurityPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'";
-
     var req = ctx.Request;
     var reading = HttpMethods.IsGet(req.Method) || HttpMethods.IsHead(req.Method);
-    if (ctx.Connection.LocalPort == cfg.ScreenPort)
+    var onScreenPort = ctx.Connection.LocalPort == cfg.ScreenPort;
+    // The admin page shows a live preview of a room screen in an iframe (screen port inside admin port).
+    headers.ContentSecurityPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " + (onScreenPort
+        ? $"frame-ancestors 'self' http://*:{cfg.AdminPort}"
+        : $"frame-src 'self' http://{req.Host.Host}:{cfg.ScreenPort}; frame-ancestors 'none'");
+
+    if (onScreenPort)
     {
         // The screen app may render from a page bundled in the APK, i.e. another origin. Data here is public
         // display info and no cookies are used, so any origin may read it.
@@ -219,6 +225,8 @@ app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
     var version = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new { display, org }, Json.Compact)))[..8];
 
     var now = DateTime.Now;
+    var client = ctx.Request.Query["client"].ToString();
+    if (client != "preview") screensSeen[(room.Code, ClientIp(ctx).ToString())] = (now, client == "apk" ? "apk" : "web");
     var pick = Screen.PickFor(d.Meetings.Where(m => Screen.Matches(room, m.Place)), now, s.EmptyDay == "nextMeeting");
     var week = Screen.WeekStart(DateOnly.FromDateTime(now));
     return Results.Ok(new
@@ -241,7 +249,8 @@ app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
 app.MapGet("/api/rooms", (HttpContext ctx) =>
 {
     var d = store.Current;
-    var today = DateOnly.FromDateTime(DateTime.Now);
+    var now = DateTime.Now;
+    var today = DateOnly.FromDateTime(now);
     return d.Rooms.Select(r => new
     {
         r.Code,
@@ -250,6 +259,11 @@ app.MapGet("/api/rooms", (HttpContext ctx) =>
         r.Display,
         todayCount = d.Meetings.Count(m => m.Date == today && m.Status != MeetingStatus.Cancelled && Screen.Matches(r, m.Place)),
         screenUrl = $"http://{ctx.Request.Host.Host}:{cfg.ScreenPort}/room/{r.Code}",
+        // Screens that fetched this room's schedule in the last day; they poll every 60s, so 3 minutes of silence = offline.
+        screens = screensSeen
+            .Where(x => x.Key.Room == r.Code && now - x.Value.At < TimeSpan.FromDays(1))
+            .OrderByDescending(x => x.Value.At)
+            .Select(x => new { ip = x.Key.Ip, lastSeen = x.Value.At.ToString("yyyy-MM-ddTHH:mm:ss"), x.Value.Client, online = now - x.Value.At < TimeSpan.FromMinutes(3) }),
     });
 });
 

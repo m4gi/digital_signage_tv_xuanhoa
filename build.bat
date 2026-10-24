@@ -28,6 +28,8 @@ copy /y deploy\install.ps1 dist\ >nul
 copy /y deploy\uninstall.bat dist\ >nul
 copy /y README.md dist\ >nul
 copy /y docs\screen-api.md dist\ >nul
+rem APK man hinh: build truoc bang android\gradlew.bat assembleDebug (can Android Studio).
+if exist android\app\build\outputs\apk\debug\app-debug.apk copy /y android\app\build\outputs\apk\debug\app-debug.apk dist\LichHop.apk >nul
 rmdir /s /q obj\publish
 rmdir obj 2>nul
 

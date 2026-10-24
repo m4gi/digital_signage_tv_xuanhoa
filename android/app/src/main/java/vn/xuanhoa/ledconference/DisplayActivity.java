@@ -3,7 +3,6 @@ package vn.xuanhoa.ledconference;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -15,6 +14,8 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -26,6 +27,7 @@ import java.util.Collections;
 public class DisplayActivity extends Activity {
     private static final String HOST = "led.local";
     private WebView web;
+    private View splash;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -40,16 +42,22 @@ public class DisplayActivity extends Activity {
 
     private void open() {
         web = new WebView(this);
-        web.setBackgroundColor(Color.BLACK);
+        web.setBackgroundColor(getColor(R.color.brand));
         web.setKeepScreenOn(true);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         web.setWebViewClient(new Client());
         web.setOnLongClickListener(v -> { menu(); return true; });
-        setContentView(web);
 
         SharedPreferences p = getSharedPreferences(SetupActivity.PREFS, MODE_PRIVATE);
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web);
+        splash = getLayoutInflater().inflate(R.layout.splash, root, false);
+        ((TextView) splash.findViewById(R.id.splashText)).setText("Đang tải lịch " + p.getString("roomName", "") + "…");
+        root.addView(splash);
+        setContentView(root);
+
         web.loadUrl("http://" + HOST + "/display.html?server=" + Uri.encode(p.getString("server", ""))
                 + "&room=" + Uri.encode(p.getString("room", "")));
     }
@@ -92,6 +100,13 @@ public class DisplayActivity extends Activity {
     }
 
     private class Client extends WebViewClient {
+        // The page is local and fetches the schedule right after load; give it a moment, then fade the splash.
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            final View s = splash;
+            s.animate().alpha(0).setStartDelay(800).setDuration(400).withEndAction(() -> s.setVisibility(View.GONE));
+        }
+
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
             Uri u = req.getUrl();

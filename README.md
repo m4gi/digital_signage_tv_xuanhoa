@@ -53,7 +53,7 @@ Lịch lấy từ file Excel lịch tuần xuất từ phần mềm quản lý l
    tài khoản quyền thấp riêng, mở tường lửa đúng hai cổng đã chọn, khởi động dịch vụ, **gọi thử cả hai cổng** để chắc
    LedConference đang trả lời, rồi in ra địa chỉ trang quản trị.
 6. Từ máy quản trị, mở `http://<IP máy chủ>:<cổng quản trị>/`:
-   - **Nhập Excel & cấu hình → Phòng họp & màn hình → + Thêm phòng** cho từng phòng có màn hình.
+   - tab **Phòng & màn hình → + Thêm phòng** cho từng phòng có màn hình.
    - Kéo thả file lịch tuần vào ô **Nhập lịch tuần**.
 
 Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (cửa sổ đen là máy chủ; đóng cửa sổ là dừng).
@@ -74,7 +74,7 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 1. Cắm dây mạng, cắm chuột USB, thoát ứng dụng quảng cáo của hãng.
 2. Cài **Fully Kiosk Browser** (tải APK từ fully-kiosk.com, chép qua USB, bật “Cho phép cài ứng dụng không rõ nguồn”).
 3. Trong Fully Kiosk:
-   - **Start URL**: link của phòng, lấy ở trang quản trị (nút **Sao chép**), dạng `http://192.168.1.10:8080/room/P201`.
+   - **Start URL**: link của phòng, lấy ở tab **Phòng & màn hình** (dòng “Link Fully Kiosk”, nút **Sao chép**), dạng `http://192.168.1.10:8080/room/P201`.
    - Bật **Launch on Boot**, **Keep Screen On**, **Fullscreen**, **Reload on network reconnect**.
 4. Tắt tự chạy của ứng dụng quảng cáo cũ. Rút điện cắm lại để kiểm tra màn hình tự lên lịch.
 5. Nên dùng bản Fully Kiosk PLUS để khoá thiết bị (Kiosk Mode có mã PIN thoát).
@@ -82,7 +82,7 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 ## 5. Sử dụng hằng ngày
 
 ### Nhập lịch tuần từ Excel
-Trang quản trị → **Nhập Excel & cấu hình** → kéo thả file `Lichdonvi_….xlsx`.
+Trang quản trị → tab **Nhập Excel** → kéo thả file `Lichdonvi_….xlsx`.
 - Lịch các ngày trong tuần của file được **thay mới**; các tuần khác giữ nguyên.
 - Nếu tuần đó có cuộc họp đã **sửa tay**, hệ thống hỏi trước khi ghi đè.
 - File có lỗi thì **không nhập gì**, danh sách lỗi hiện theo số dòng.
@@ -109,7 +109,8 @@ Trang quản trị → **Lịch họp**: lọc theo phòng, chọn tuần, **+ T
 ### Giao diện
 - **Giao diện màn hình (cấu hình chung)**: mẫu Chính thức / Trang trọng / Hiện đại, hiệu ứng, màn hình dọc/ngang,
   hình đường chân trời, đồng hồ, chân trang, ghi chú cố định.
-- Từng phòng có thể dùng giao diện riêng: bảng phòng → **Sửa**.
+- Từng phòng có thể dùng giao diện riêng: tab **Phòng & màn hình** → **Sửa & xem trước** (có khung xem trước màn hình thật).
+- Tab **Phòng & màn hình** cho biết màn hình nào đang chạy (chấm xanh) hay mất kết nối quá 3 phút (chấm đỏ), kèm IP thiết bị.
 - **Chỉnh màu từng mẫu, tạo mẫu mới**: lưu vào `data\themes.json`.
 - Logo phường có sẵn; muốn đổi: **Đơn vị & logo → Đổi logo** (WebP/PNG/JPG, tối đa 2MB).
 

@@ -1,4 +1,4 @@
-// Admin UI. Plain JS, hash routes: #/lich, #/cauhinh, #/phong/{code|moi}, #/mau/{id}.
+// Admin UI. Plain JS, hash routes: #/lich, #/nhap, #/phong, #/phong/{code|moi}, #/giaodien, #/mau/{id}, #/hethong.
 // All text goes through textContent (h() below), never innerHTML: meeting data comes from Excel files.
 'use strict';
 
@@ -21,7 +21,7 @@ const ACTIONS = {
 };
 
 // Page state that survives navigation between routes.
-const S = { week: null, room: 'ALL', edit: null, importResult: null };
+const S = { week: null, room: 'ALL', q: '', edit: null, importResult: null, timer: null };
 
 // ---------- Helpers ----------
 
@@ -69,6 +69,8 @@ const dmy = s => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
 const dm = s => `${s.slice(8, 10)}/${s.slice(5, 7)}`;
 const dayLabel = s => `${DAYS[parseIso(s).getDay()]}, ${dmy(s)}`;
 const today = () => iso(new Date());
+// Case- and accent-insensitive text for search: "chu tich" finds "Chủ tịch".
+const fold = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
 const nowHm = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 function options(pairs, selected) {
@@ -128,12 +130,14 @@ function displaySummary(display, themes) {
 
 // ---------- Router ----------
 
-const routes = { lich: pageSchedule, cauhinh: pageConfig, phong: pageRoom, mau: pageThemes };
+const routes = { lich: pageSchedule, nhap: pageImport, phong: pageRooms, giaodien: pageAppearance, mau: pageThemes, hethong: pageSystem };
 
 async function route() {
-  const [name, arg] = location.hash.replace(/^#\/?/, '').split('/');
-  const page = routes[name] || pageSchedule;
-  const tab = name === 'phong' || name === 'mau' ? 'cauhinh' : routes[name] ? name : 'lich';
+  clearTimeout(S.timer);
+  let [name, arg] = location.hash.replace(/^#\/?/, '').split('/');
+  if (name === 'cauhinh') name = 'nhap'; // old bookmark
+  const page = name === 'phong' && arg ? pageRoom : routes[name] || pageSchedule;
+  const tab = name === 'mau' ? 'giaodien' : routes[name] ? name : 'lich';
   document.querySelectorAll('[data-nav]').forEach(a => {
     a.classList.toggle('active', a.dataset.nav === tab);
     if (a.dataset.nav === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -189,23 +193,40 @@ async function pageSchedule(app) {
       h('a', { class: 'btn', href: `/api/export?week=${week}` }, 'Xuất Excel tuần này'),
       h('button', { class: 'btn primary', type: 'button', onclick: () => { S.edit = { id: null }; route(); } }, '+ Thêm cuộc họp')));
 
-  const items = data.items.filter(m => S.room === 'ALL' || m.roomCode === S.room);
+  const inRoom = data.items.filter(m => S.room === 'ALL' || m.roomCode === S.room);
   const t = today(), hm = nowHm();
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const date = addDays(week, i);
-    const list = items.filter(m => m.date === date);
-    days.push(h('section', { class: 'day' + (date === t ? ' today' : '') },
-      h('div', { class: 'day-head' },
-        h('h2', null, dayLabel(date) + (date === t ? ' · Hôm nay' : '')),
-        h('span', { class: 'small muted' }, list.length ? `${list.length} cuộc họp` : 'Không có lịch')),
-      list.map(m => meetingRow(m, date === t && m.status === 'normal' && m.start <= hm && hm < m.end))));
+  const daysBox = h('div', { class: 'main stack' });
+  const summary = h('span', { class: 'small muted' });
+
+  // Re-rendered on every keystroke in the search box, without rebuilding the page (keeps focus in the box).
+  function fill() {
+    const q = fold(S.q.trim());
+    const items = q ? inRoom.filter(m => fold([m.title, m.chair, m.participants, m.note, m.place, m.roomCode].join(' ')).includes(q)) : inRoom;
+    summary.textContent = q ? `Tìm thấy ${items.length} cuộc họp` : `${items.length} cuộc họp trong tuần`;
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(week, i);
+      const list = items.filter(m => m.date === date);
+      if (q && !list.length) continue;
+      // Days without meetings shrink to one line so the busy days stay in view.
+      days.push(h('section', { class: 'day' + (date === t ? ' today' : '') + (list.length ? '' : ' empty') },
+        h('div', { class: 'day-head' },
+          h('h2', null, dayLabel(date) + (date === t ? ' · Hôm nay' : '')),
+          h('span', { class: 'small muted' }, list.length ? `${list.length} cuộc họp` : 'Không có lịch')),
+        list.map(m => meetingRow(m, date === t && m.status === 'normal' && m.start <= hm && hm < m.end))));
+    }
+    daysBox.replaceChildren(...(days.length ? days : [h('p', { class: 'muted' }, 'Không có cuộc họp nào khớp.')]));
   }
+  fill();
+
+  const search = h('input', { type: 'search', class: 'search', value: S.q, placeholder: 'Tìm theo nội dung, chủ trì, thành phần…', 'aria-label': 'Tìm cuộc họp trong tuần' });
+  search.addEventListener('input', () => { S.q = search.value; fill(); });
 
   const editing = S.edit && (S.edit.id ? data.items.find(m => m.id === S.edit.id) : S.edit);
   app.replaceChildren(h('div', { class: 'stack' }, toolbar,
+    h('div', { class: 'row between' }, search, summary),
     h('div', { class: 'cols' },
-      h('div', { class: 'main stack' }, days),
+      daysBox,
       editing && h('div', { class: 'side' }, meetingEditor(editing, rooms, week)))));
 }
 
@@ -307,23 +328,44 @@ function meetingEditor(m, rooms, week) {
   return form;
 }
 
-// ---------- Nhập Excel & cấu hình ----------
+// ---------- Nhập Excel ----------
 
-async function pageConfig(app) {
-  const [rooms, settings, themes, unassigned, imports, audit] = await Promise.all([
-    api('GET', '/api/rooms'), api('GET', '/api/settings'), api('GET', '/api/themes'),
-    api('GET', '/api/places/unassigned'), api('GET', '/api/imports'), api('GET', '/api/audit?limit=30'),
+async function pageImport(app) {
+  const [rooms, settings, unassigned, imports] = await Promise.all([
+    api('GET', '/api/rooms'), api('GET', '/api/settings'), api('GET', '/api/places/unassigned'), api('GET', '/api/imports'),
   ]);
   app.replaceChildren(h('div', { class: 'stack' },
-    themes.fileError && h('div', { class: 'alert error' }, h('strong', null, 'File data\\themes.json đang sai, các mẫu cũ vẫn được dùng: '), themes.fileError),
     importCard(),
     unassignedCard(unassigned, rooms, settings),
-    roomsCard(rooms, themes.items),
-    appearanceCard(settings, themes.items),
     h('div', { class: 'cols' },
-      h('div', { class: 'side stack' }, orgCard(settings), sessionsCard(settings)),
-      h('div', { class: 'side stack' }, importsCard(imports), systemCard(settings))),
-    auditCard(audit)));
+      h('div', { class: 'main' }, importsCard(imports)),
+      h('div', { class: 'side' }, sessionsCard(settings)))));
+}
+
+// ---------- Phòng & màn hình ----------
+
+async function pageRooms(app) {
+  const [rooms, themes] = await Promise.all([api('GET', '/api/rooms'), api('GET', '/api/themes')]);
+  app.replaceChildren(h('div', { class: 'stack' }, roomsCard(rooms, themes.items)));
+  // Keep the online/offline dots current while the page is open.
+  S.timer = setTimeout(() => { if (location.hash === '#/phong') route(); }, 30000);
+}
+
+// ---------- Giao diện ----------
+
+async function pageAppearance(app) {
+  const [settings, themes] = await Promise.all([api('GET', '/api/settings'), api('GET', '/api/themes')]);
+  app.replaceChildren(h('div', { class: 'stack' },
+    themes.fileError && h('div', { class: 'alert error' }, h('strong', null, 'File data\\themes.json đang sai, các mẫu cũ vẫn được dùng: '), themes.fileError),
+    appearanceCard(settings, themes.items),
+    orgCard(settings)));
+}
+
+// ---------- Hệ thống ----------
+
+async function pageSystem(app) {
+  const [settings, audit] = await Promise.all([api('GET', '/api/settings'), api('GET', '/api/audit?limit=100')]);
+  app.replaceChildren(h('div', { class: 'stack' }, systemCard(settings), auditCard(audit)));
 }
 
 function importCard() {
@@ -398,34 +440,65 @@ async function act(promise, message) {
 }
 
 function roomsCard(rooms, themes) {
+  const online = rooms.reduce((n, r) => n + (r.screens || []).filter(s => s.online).length, 0);
   return card('Phòng họp & màn hình', null,
     h('div', { class: 'row between' },
-      h('p', { class: 'card-hint' }, 'Mỗi phòng một link. Nhập link vào Fully Kiosk Browser (hoặc app màn hình) của phòng đó.'),
+      h('p', { class: 'card-hint' }, `${rooms.length} phòng · ${online} màn hình đang chạy. Trạng thái tự cập nhật mỗi 30 giây.`),
       h('a', { class: 'btn primary', href: '#/phong/moi' }, '+ Thêm phòng')),
-    !rooms.length ? h('p', { class: 'muted' }, 'Chưa có phòng nào.') : h('div', { class: 'table-wrap' }, h('table', { style: 'min-width:980px' },
-      h('thead', null, h('tr', null, ['Mã', 'Tên hiển thị', 'Địa điểm khớp (trong Excel)', 'Hôm nay', 'Giao diện', 'Link cho màn hình', ''].map(x =>
-        h('th', null, x || h('span', { class: 'sr-only' }, 'Thao tác'))))),
-      h('tbody', null, rooms.map(r => {
-        const own = displaySummary(r.display, themes);
-        return h('tr', null,
-          h('td', { class: 'mono' }, h('strong', null, r.code)),
-          h('td', null, h('strong', null, r.name)),
-          h('td', { class: 'muted' }, r.places.join('; ') || '—'),
-          h('td', null, r.todayCount ? `${r.todayCount} cuộc họp` : 'Không có'),
-          h('td', null, h('span', { class: 'chip' + (own ? ' room' : '') }, own ? 'Riêng · ' + own : 'Theo chung')),
-          h('td', null, h('div', { class: 'row', style: 'flex-wrap:nowrap' },
-            h('code', { class: 'small' }, r.screenUrl),
-            h('button', { class: 'btn small', type: 'button', onclick: () => copyText(r.screenUrl) }, 'Sao chép'))),
-          h('td', { style: 'white-space:nowrap' }, h('div', { class: 'row' },
-            h('a', { href: r.screenUrl, target: '_blank', rel: 'noopener' }, 'Xem'),
-            h('a', { href: '#/phong/' + encodeURIComponent(r.code) }, 'Sửa'),
-            h('button', { class: 'link danger', type: 'button', onclick: () => deleteRoom(r) }, 'Xoá'))));
-      })))));
+    !rooms.length ? h('p', { class: 'muted' }, 'Chưa có phòng nào.') : h('div', { class: 'room-grid' }, rooms.map(r => roomCard(r, themes))),
+    h('p', { class: 'small muted' },
+      'App “Lịch họp Xuân Hòa” tự tìm máy chủ trong mạng; nếu không thấy thì nhập “Địa chỉ cho app”. ',
+      'Fully Kiosk Browser thì nhập “Link Fully Kiosk” của phòng.'));
+}
+
+const hmOf = s => s.slice(11, 16);
+
+// Overall chip plus one line per screen that fetched this room's schedule in the last day.
+function screenStatus(r) {
+  const list = r.screens || [];
+  const on = list.filter(s => s.online).length;
+  const chip = on ? h('span', { class: 'chip ok' }, `● ${on} màn hình đang chạy`)
+    : list.length ? h('span', { class: 'chip cancelled' }, '● Mất kết nối')
+    : h('span', { class: 'chip' }, 'Chưa có màn hình kết nối');
+  const lines = list.map(s => h('div', { class: 'screen-line small' },
+    h('span', { class: 'dot ' + (s.online ? 'on' : 'off'), 'aria-hidden': 'true' }),
+    h('span', { class: 'mono' }, s.ip),
+    h('span', { class: 'muted' }, s.client === 'apk' ? 'App Android' : 'Trình duyệt / Fully Kiosk'),
+    h('span', { class: s.online ? '' : 'error-text' }, s.online ? 'đang chạy' : `mất kết nối từ ${hmOf(s.lastSeen)} ${dm(s.lastSeen.slice(0, 10))}`)));
+  return { chip, lines };
+}
+
+function copyRow(label, value) {
+  return h('div', { class: 'copy-row' },
+    h('span', { class: 'small muted' }, label),
+    h('code', { class: 'small' }, value),
+    h('button', { class: 'btn small', type: 'button', onclick: () => copyText(value) }, 'Sao chép'));
+}
+
+function roomCard(r, themes) {
+  const own = displaySummary(r.display, themes);
+  const st = screenStatus(r);
+  return h('article', { class: 'room-card' },
+    h('div', { class: 'row between' },
+      h('div', { class: 'row' }, h('span', { class: 'chip room mono' }, r.code), h('strong', { class: 'room-name' }, r.name)),
+      st.chip),
+    h('div', { class: 'row small' },
+      h('span', null, r.todayCount ? `Hôm nay ${r.todayCount} cuộc họp` : 'Hôm nay không có lịch'),
+      h('span', { class: 'chip' + (own ? ' room' : '') }, own ? 'Giao diện riêng · ' + own : 'Giao diện theo chung')),
+    h('div', { class: 'small muted' }, 'Địa điểm khớp trong Excel: ' + (r.places.join('; ') || '—')),
+    st.lines.length > 0 && h('div', { class: 'screens' }, st.lines),
+    h('div', { class: 'copies' },
+      copyRow('Địa chỉ cho app', new URL(r.screenUrl).host),
+      copyRow('Link Fully Kiosk', r.screenUrl)),
+    h('div', { class: 'row' },
+      h('a', { class: 'btn small', href: '#/phong/' + encodeURIComponent(r.code) }, 'Sửa & xem trước'),
+      h('a', { class: 'btn small', href: r.screenUrl, target: '_blank', rel: 'noopener' }, 'Mở màn hình'),
+      h('button', { class: 'link danger', type: 'button', style: 'margin-left:auto', onclick: () => deleteRoom(r) }, 'Xoá phòng')));
 }
 
 async function deleteRoom(r) {
   if (!confirmDelete(`phòng ${r.code} – ${r.name}. Các cuộc họp vẫn giữ, nhưng không hiện lên màn hình nào cho đến khi địa điểm được gán lại`)) return;
-  try { await api('DELETE', '/api/rooms/' + encodeURIComponent(r.code)); toast('Đã xoá phòng.'); location.hash = '#/cauhinh'; route(); } catch (e) { fail(e); }
+  try { await api('DELETE', '/api/rooms/' + encodeURIComponent(r.code)); toast('Đã xoá phòng.'); location.hash = '#/phong'; route(); } catch (e) { fail(e); }
 }
 
 function themeChoices(themes, selected, name) {
@@ -454,7 +527,7 @@ function appearanceCard(settings, themes) {
   const form = h('form', { class: 'card' },
     h('div', { class: 'row between' },
       h('div', null, h('h2', { class: 'card-title' }, 'Giao diện màn hình (cấu hình chung)'),
-        h('p', { class: 'card-hint' }, 'Áp dụng cho mọi phòng. Phòng nào cần khác thì bấm “Sửa” ở bảng phòng. Màn hình đổi trong vòng 1 phút.')),
+        h('p', { class: 'card-hint' }, 'Áp dụng cho mọi phòng. Phòng nào cần khác thì sửa ở tab “Phòng & màn hình”. Màn hình đổi trong vòng 1 phút.')),
       h('a', { href: '#/mau' }, 'Chỉnh màu từng mẫu, tạo mẫu mới ›')),
     h('fieldset', { style: 'border:0;margin:0;padding:0' }, h('legend', { style: 'font-weight:600;padding:0;margin-bottom:8px' }, 'Mẫu giao diện'),
       themeChoices(themes, d.theme, 'theme')),
@@ -539,7 +612,7 @@ function systemCard(settings) {
 }
 
 function auditCard(audit) {
-  return card('Nhật ký thao tác', '30 thao tác gần nhất. Toàn bộ nằm trong data\\audit.log.',
+  return card('Nhật ký thao tác', '100 thao tác gần nhất. Toàn bộ nằm trong data\\audit.log.',
     !audit.length ? h('p', { class: 'muted' }, 'Chưa có thao tác nào.') : h('div', { class: 'table-wrap' }, h('table', null,
       h('thead', null, h('tr', null, ['Lúc', 'Máy', 'Thao tác', 'Đối tượng'].map(x => h('th', null, x)))),
       h('tbody', null, audit.map(a => h('tr', null,
@@ -620,13 +693,18 @@ async function pageRoom(app, code) {
 
   const form = h('form', { class: 'stack' },
     h('div', { class: 'row between' },
-      h('div', null, h('a', { class: 'small', href: '#/cauhinh' }, '‹ Danh sách phòng'),
+      h('div', null, h('a', { class: 'small', href: '#/phong' }, '‹ Danh sách phòng'),
         h('h1', { class: 'page-title' }, isNew ? 'Thêm phòng' : `${room.code} – ${room.name}`),
         h('p', { class: 'card-hint' }, 'Mục nào để “Theo cấu hình chung” sẽ tự đổi khi cấu hình chung thay đổi.')),
       h('div', { class: 'row' },
-        !isNew && h('a', { class: 'btn', href: room.screenUrl, target: '_blank', rel: 'noopener' }, 'Xem màn hình phòng này'),
+        !isNew && h('a', { class: 'btn', href: room.screenUrl, target: '_blank', rel: 'noopener' }, 'Mở màn hình'),
         !isNew && h('button', { class: 'btn danger', type: 'button', onclick: () => deleteRoom(room) }, 'Xoá phòng'),
         h('button', { class: 'btn primary', type: 'submit' }, 'Lưu'))),
+    h('div', { class: 'cols' },
+      h('div', { class: 'main stack' }, ...cards()),
+      !isNew && h('aside', { class: 'side stack preview-side' }, previewCard(room, (own.orientation || g.orientation) === 'portrait'))));
+
+  function cards() { return [
     card('Thông tin phòng', null,
       h('div', { class: 'grid' }, field('Mã phòng', codeInput, isNew ? 'Chữ không dấu, số, - hoặc _. Không đổi được sau khi tạo.' : null), field('Tên hiển thị trên màn hình', name)),
       field('Địa điểm khớp trong Excel', places, 'Mỗi dòng một tên. Tên phòng luôn được tính là khớp. Không phân biệt hoa thường, khoảng trắng thừa.')),
@@ -636,7 +714,7 @@ async function pageRoom(app, code) {
         h('button', { class: 'btn', type: 'button', onclick: () => { Object.values(selects).forEach(s => { s.value = ''; s.dispatchEvent(new Event('change')); }); texts.forEach(t => t.reset()); } },
           'Bỏ tuỳ chỉnh, dùng cấu hình chung')),
       rows,
-      texts.map(t => t.nodes)));
+      texts.map(t => t.nodes))]; }
 
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
@@ -651,10 +729,29 @@ async function pageRoom(app, code) {
       if (isNew) await api('POST', '/api/rooms', body);
       else await api('PUT', '/api/rooms/' + encodeURIComponent(room.code), body);
       toast('Đã lưu phòng.');
-      location.hash = '#/cauhinh';
+      // Stay on the room so the preview shows the saved look.
+      if (isNew) location.hash = '#/phong/' + encodeURIComponent(body.code.toUpperCase());
+      else route();
     } catch (e) { showErrors(form, e); }
   });
   app.replaceChildren(form);
+}
+
+// The real screen page in a frame, scaled like the device. ?preview=1 keeps it out of the screen status list.
+function previewCard(room, portrait) {
+  const frame = h('iframe', { src: room.screenUrl + '?preview=1', title: 'Xem trước màn hình ' + room.code, loading: 'lazy' });
+  const st = screenStatus(room);
+  return [
+    h('section', { class: 'card' },
+      h('div', { class: 'row between' }, h('h2', { class: 'card-title' }, 'Xem trước màn hình'),
+        h('button', { class: 'btn small', type: 'button', onclick: () => { frame.src = frame.src; } }, 'Tải lại')),
+      h('p', { class: 'card-hint' }, 'Đúng như màn hình thật đang hiện. Sau khi bấm Lưu, phần xem trước đổi theo ngay.'),
+      h('div', { class: 'preview-frame' + (portrait ? ' portrait' : '') }, frame)),
+    h('section', { class: 'card' },
+      h('div', { class: 'row between' }, h('h2', { class: 'card-title' }, 'Màn hình đang kết nối'), st.chip),
+      st.lines.length ? h('div', { class: 'screens' }, st.lines) : h('p', { class: 'small muted' }, 'Chưa có màn hình nào lấy lịch phòng này trong 24 giờ qua.'),
+      h('div', { class: 'copies' }, copyRow('Địa chỉ cho app', new URL(room.screenUrl).host), copyRow('Link Fully Kiosk', room.screenUrl))),
+  ];
 }
 
 // ---------- Chỉnh mẫu giao diện ----------
@@ -768,7 +865,7 @@ async function pageThemes(app, id) {
 
   app.replaceChildren(h('div', { class: 'stack' },
     h('div', { class: 'row between' },
-      h('div', null, h('a', { class: 'small', href: '#/cauhinh' }, '‹ Quay lại cấu hình'),
+      h('div', null, h('a', { class: 'small', href: '#/giaodien' }, '‹ Quay lại giao diện'),
         h('h1', { class: 'page-title' }, 'Chỉnh mẫu giao diện màn hình'),
         h('p', { class: 'card-hint' }, 'Lưu vào data\\themes.json trên máy chủ. Sửa trực tiếp file đó cũng được, máy chủ tự nạp lại.')),
       h('div', { class: 'row' },

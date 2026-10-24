@@ -12,6 +12,8 @@
   var params = new URLSearchParams(location.search);
   var server = (params.get('server') || '').replace(/\/+$/, '');
   var code = params.get('room') || decodeURIComponent(location.pathname.split('/').pop() || '');
+  // Tells the server who is asking, for the admin's screen status: the APK, a browser/Fully Kiosk, or the admin preview.
+  var client = params.get('preview') ? 'preview' : server ? 'apk' : 'web';
   var stage = document.getElementById('stage');
   var data = null, version = null, offset = 0, lastOk = null, statusKey = null, page = 0, pages = [];
   var flipStart = Date.now(); // when the current page appeared; re-renders keep it, only a flip resets it
@@ -249,8 +251,6 @@
   function render(d) {
     $('room').textContent = d.room.name;
     document.title = d.room.name + ' – Lịch họp';
-    var f = d.week.from.split('-'), t = d.week.to.split('-');
-    $('week').textContent = 'Lịch tuần ' + f[2] + '/' + f[1] + ' – ' + t[2] + '/' + t[1] + '/' + t[0];
     $('note').textContent = d.display.footerNote || '';
     var key = renderStatus(d);
     tick();
@@ -287,7 +287,7 @@
   }
 
   function load() {
-    fetch(server + '/api/screens/' + encodeURIComponent(code), { cache: 'no-store' })
+    fetch(server + '/api/screens/' + encodeURIComponent(code) + '?client=' + client, { cache: 'no-store' })
       .then(function (r) {
         if (r.status === 404) throw 404;
         if (!r.ok) throw r.status;
