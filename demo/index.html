@@ -1,0 +1,117 @@
+<title>Lịch họp Xuân Hòa</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: a slim brand header, one tab row, then the live page in a frame sized like the real device. */
+:root {
+  --bg: #F3F6FB; --surface: #FFFFFF; --fg: #0B2545; --muted: #4F6380; --line: #D5E1F0;
+  --brand: #0C4DA2; --brand-fg: #FFFFFF; --accent: #FFC72C; --frame: #05080F;
+  --font: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0B1422; --surface: #13203A; --fg: #E6EEF9; --muted: #9DB0CC; --line: #24365A; --brand: #2F6FC4; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0B1422; --surface: #13203A; --fg: #E6EEF9; --muted: #9DB0CC; --line: #24365A; --brand: #2F6FC4; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { background: var(--brand); color: var(--brand-fg); }
+header .wrap { display: flex; align-items: center; gap: 14px; padding-block: 14px; }
+header img { width: 48px; height: 48px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+h1 { margin: 0; font-size: 20px; font-weight: 800; text-wrap: balance; }
+main.wrap { padding-block: 20px 40px; display: flex; flex-direction: column; gap: 16px; }
+.intro { margin: 0; color: var(--muted); max-width: 70ch; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.tabs button { font: inherit; font-weight: 600; min-height: 40px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--brand); color: var(--brand-fg); }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tools label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+select, .btn { font: inherit; min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
+.btn { font-weight: 600; cursor: pointer; }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stage { display: flex; justify-content: center; background: var(--frame); border-radius: 10px; padding: 12px; }
+iframe { display: block; border: 0; background: var(--frame); max-width: 100%; }
+.landscape iframe { width: 100%; aspect-ratio: 16 / 9; }
+.portrait iframe { height: min(78vh, 900px); aspect-ratio: 9 / 16; }
+.admin .stage { padding: 0; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.admin iframe { width: 100%; height: max(78vh, 640px); background: #F8FAFC; }
+.notes { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; max-width: 80ch; }
+.notes code { font-size: 13px; }
+</style>
+
+<header>
+  <div class="wrap">
+    <img src="logo.webp" alt="" width="48" height="48">
+    <div>
+      <div class="eyebrow">UBND phường Xuân Hòa · bản mẫu giao diện</div>
+      <h1>Lịch họp phòng họp</h1>
+    </div>
+  </div>
+</header>
+
+<main class="wrap landscape" id="main">
+  <p class="intro">Đây là giao diện thật của phần mềm, chạy bằng dữ liệu mẫu ngay trong trình duyệt. Thêm hoặc sửa cuộc họp ở trang quản trị rồi quay lại màn hình: lịch cập nhật trong vòng 30 giây, hoặc bấm “Làm mới”.</p>
+
+  <div class="bar">
+    <div class="tabs" role="tablist" aria-label="Chọn giao diện">
+      <button role="tab" id="tab-ngang" aria-controls="frame" data-view="ngang">Màn hình ngang</button>
+      <button role="tab" id="tab-doc" aria-controls="frame" data-view="doc">Màn hình dọc</button>
+      <button role="tab" id="tab-quantri" aria-controls="frame" data-view="quantri">Trang quản trị</button>
+    </div>
+    <div class="tools">
+      <label id="roomPick">Phòng
+        <select id="room">
+          <option value="P201">P201 – Phòng họp tầng 2 (mẫu Chính thức)</option>
+          <option value="P101">P101 – Phòng họp tầng 1 (mẫu Hiện đại)</option>
+          <option value="PTD">PTD – Phòng tiếp dân (mẫu Trang trọng, tên dài)</option>
+        </select>
+      </label>
+      <button class="btn" id="reload" type="button">Làm mới</button>
+      <button class="btn" id="reset" type="button">Đặt lại dữ liệu mẫu</button>
+    </div>
+  </div>
+
+  <div class="stage" role="tabpanel" aria-labelledby="tab-ngang" id="panel">
+    <iframe id="frame" title="Màn hình phòng họp"></iframe>
+  </div>
+
+  <ul class="notes">
+    <li>Màn hình ngang/dọc là đúng trang màn hình chạy trên standee (Fully Kiosk); trang quản trị là đúng trang mở ở <code>http://&lt;IP máy chủ&gt;:8081/</code>.</li>
+    <li>Bản mẫu không đọc được file Excel và không tải file về; trên máy chủ thật các nút đó hoạt động bình thường.</li>
+    <li>Dữ liệu mẫu chỉ lưu trong trình duyệt của bạn và tự tạo lại mỗi ngày theo giờ hiện tại.</li>
+  </ul>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var main = document.getElementById('main'), frame = document.getElementById('frame');
+  var room = document.getElementById('room'), panel = document.getElementById('panel');
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role=tab]'));
+  var defaults = { ngang: 'P201', doc: 'PTD' };
+  var view = 'ngang';
+
+  function show(name, keepRoom) {
+    view = name;
+    tabs.forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.view === name)); });
+    panel.setAttribute('aria-labelledby', 'tab-' + name);
+    main.className = 'wrap ' + (name === 'quantri' ? 'admin' : name === 'doc' ? 'portrait' : 'landscape');
+    document.getElementById('roomPick').hidden = name === 'quantri';
+    if (!keepRoom && defaults[name]) room.value = defaults[name];
+    frame.title = name === 'quantri' ? 'Trang quản trị' : 'Màn hình phòng họp';
+    frame.src = name === 'quantri' ? 'admin.html#/lich' : 'display.html?room=' + room.value + '&v=' + Date.now();
+    try { history.replaceState(null, '', '#' + name); } catch (e) { /* not essential */ }
+  }
+
+  tabs.forEach(function (t) { t.addEventListener('click', function () { show(t.dataset.view); }); });
+  room.addEventListener('change', function () { show(view, true); });
+  document.getElementById('reload').addEventListener('click', function () { show(view, true); });
+  document.getElementById('reset').addEventListener('click', function () {
+    try { localStorage.removeItem('ledConference.demo.v2'); } catch (e) { /* in-memory data resets on reload */ }
+    show(view, true);
+  });
+
+  var start = location.hash.replace('#', '');
+  show(defaults[start] || start === 'quantri' ? start : 'ngang');
+})();
+</script>

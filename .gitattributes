@@ -1,0 +1,6 @@
+* text=auto
+# cmd and Windows PowerShell scripts must keep CRLF line endings
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.webp binary

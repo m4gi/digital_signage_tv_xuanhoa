@@ -1,0 +1,21 @@
+# Build output (rebuilt by build.bat / dotnet build)
+bin/
+obj/
+dist/
+
+# Generated demo copy (demo\make-demo.ps1 recreates it)
+demo/site/
+
+# Runtime data written next to the exe (meetings, settings, uploads, logs)
+data/
+
+# Local editor settings
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

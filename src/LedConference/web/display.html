@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lịch họp</title>
+<link rel="stylesheet" href="/assets/display.css">
+</head>
+<body>
+<div id="screen">
+<div id="stage" class="landscape">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" id="logo" aria-hidden="true"></div>
+      <div class="orgs">
+        <div class="org1" id="org1"></div>
+        <div class="org2" id="org2"></div>
+      </div>
+    </div>
+    <div class="clock" id="clock">
+      <div class="time" id="time"></div>
+      <div class="date" id="date"></div>
+    </div>
+  </header>
+
+  <div class="roomline">
+    <div class="kicker">LỊCH HỌP</div>
+    <h1 class="room clamp1" id="room">Đang kết nối máy chủ…</h1>
+  </div>
+
+  <main>
+    <section class="card status" id="status" aria-live="polite"></section>
+    <section class="list">
+      <div class="listhead">
+        <h2 class="kicker" id="listTitle">TIẾP THEO HÔM NAY</h2>
+        <div class="page" id="page"></div>
+      </div>
+      <div class="flipbar" id="flipbar" aria-hidden="true"><div></div></div>
+      <div id="rows"></div>
+    </section>
+  </main>
+
+  <footer id="footer">
+    <div id="week"></div>
+    <div id="note"></div>
+    <div id="conn"></div>
+  </footer>
+  <div id="skyline" aria-hidden="true"></div>
+</div>
+</div>
+<script src="/assets/display.js"></script>
+</body>
+</html>
