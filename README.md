@@ -6,7 +6,7 @@ Lịch lấy từ file Excel lịch tuần xuất từ phần mềm quản lý l
 ```
  Máy quản trị (trình duyệt)                 Màn hình trước phòng họp (Android)
    http://<IP máy chủ>:8081/                  Fully Kiosk Browser → http://<IP máy chủ>:8080/room/P201
-            │                                            │  tự cập nhật mỗi 30 giây
+            │                                            │  tự cập nhật mỗi 60 giây
             └──────────────── mạng LAN ──────────────────┘
                                 │
                  Windows Server: LedConference.exe (dịch vụ Windows)
@@ -93,7 +93,7 @@ Không ghi giờ kết thúc: hệ thống lấy giờ bắt đầu của cuộc
 
 ### Sửa lịch trực tiếp
 Trang quản trị → **Lịch họp**: lọc theo phòng, chọn tuần, **+ Thêm cuộc họp**, **Sửa**, **Xoá**,
-đặt trạng thái Hoãn (màn hình hiện “ĐÃ HOÃN”) hoặc Huỷ (ẩn khỏi màn hình). Màn hình cập nhật trong 30 giây.
+đặt trạng thái Hoãn (màn hình hiện “ĐÃ HOÃN”) hoặc Huỷ (ẩn khỏi màn hình). Màn hình cập nhật trong vòng 1 phút.
 
 ### Giao diện
 - **Giao diện màn hình (cấu hình chung)**: mẫu Chính thức / Trang trọng / Hiện đại, hiệu ứng, màn hình dọc/ngang,

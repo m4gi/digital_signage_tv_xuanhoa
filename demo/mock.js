@@ -1,6 +1,6 @@
 // Demo only: stands in for LedConference.exe so the real display and admin pages run as static files.
 // Intercepts fetch('/api/...') and answers from sample data kept in localStorage (shared by the
-// display and admin frames, so edits in admin show on the screens at their next 30s poll).
+// display and admin frames, so edits in admin show on the screens at their next 60s poll).
 // Mirrors the server's behaviour closely enough to click through; it is not the server.
 (function () {
   'use strict';

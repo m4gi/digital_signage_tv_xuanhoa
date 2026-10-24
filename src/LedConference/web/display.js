@@ -1,9 +1,9 @@
-// Meeting-room screen. Polls /api/screens/{code} every 30s; clock runs on server time.
+// Meeting-room screen. Polls /api/screens/{code} every 60s; clock runs on server time.
 // Plain ES2017 with no optional chaining so old Android WebViews can run it.
 (function () {
   'use strict';
 
-  var POLL_MS = 30000;
+  var POLL_MS = 60000;
   var PAGE_MS = 10000;
   var ROW_GAP = 14; // .row margin-bottom in display.css
   var DAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -227,7 +227,7 @@
     if (pages[page].session !== before) animate($('listTitle')); // morning → afternoon: the title moves too
   }
 
-  // The bar resumes from the time already spent on this page, so a 30s data refresh does not restart it.
+  // The bar resumes from the time already spent on this page, so a data refresh does not restart it.
   function startBar() {
     var bar = $('flipbar'), fill = bar.querySelector('div');
     var on = pages.length > 1 && !stage.classList.contains('nomotion');

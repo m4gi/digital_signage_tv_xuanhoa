@@ -8,7 +8,7 @@ Cổng này chỉ đọc, không cần đăng nhập, cho phép gọi từ mọi
 
 ## `GET /api/screens/{mã phòng}`
 
-Gọi mỗi 30 giây. Header trả về có `Cache-Control: no-store`.
+Gọi mỗi 60 giây. Header trả về có `Cache-Control: no-store`.
 
 | Mã | Khi nào |
 |---|---|

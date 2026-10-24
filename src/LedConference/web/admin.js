@@ -281,7 +281,7 @@ function meetingEditor(m, rooms, week) {
       h('button', { class: 'btn primary', type: 'submit' }, 'Lưu'),
       h('button', { class: 'btn', type: 'button', onclick: () => { S.edit = null; route(); } }, 'Huỷ bỏ'),
       !isNew && h('button', { class: 'btn danger', type: 'button', style: 'margin-left:auto', onclick: () => deleteMeeting(m) }, 'Xoá cuộc họp')),
-    h('p', { class: 'small muted' }, 'Màn hình của phòng cập nhật trong vòng 30 giây sau khi lưu.'));
+    h('p', { class: 'small muted' }, 'Màn hình của phòng cập nhật trong vòng 1 phút sau khi lưu.'));
   syncPlace();
 
   form.addEventListener('submit', async ev => {
@@ -454,7 +454,7 @@ function appearanceCard(settings, themes) {
   const form = h('form', { class: 'card' },
     h('div', { class: 'row between' },
       h('div', null, h('h2', { class: 'card-title' }, 'Giao diện màn hình (cấu hình chung)'),
-        h('p', { class: 'card-hint' }, 'Áp dụng cho mọi phòng. Phòng nào cần khác thì bấm “Sửa” ở bảng phòng. Màn hình đổi trong vòng 30 giây.')),
+        h('p', { class: 'card-hint' }, 'Áp dụng cho mọi phòng. Phòng nào cần khác thì bấm “Sửa” ở bảng phòng. Màn hình đổi trong vòng 1 phút.')),
       h('a', { href: '#/mau' }, 'Chỉnh màu từng mẫu, tạo mẫu mới ›')),
     h('fieldset', { style: 'border:0;margin:0;padding:0' }, h('legend', { style: 'font-weight:600;padding:0;margin-bottom:8px' }, 'Mẫu giao diện'),
       themeChoices(themes, d.theme, 'theme')),
@@ -746,7 +746,7 @@ async function pageThemes(app, id) {
   const save = async () => {
     try {
       await api('PUT', '/api/themes/' + encodeURIComponent(current.id), { ...draft, name: nameInput.value });
-      toast('Đã lưu mẫu. Màn hình dùng mẫu này đổi trong vòng 30 giây.');
+      toast('Đã lưu mẫu. Màn hình dùng mẫu này đổi trong vòng 1 phút.');
       route();
     } catch (e) { showErrors(form, e); }
   };
