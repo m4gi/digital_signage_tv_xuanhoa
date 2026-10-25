@@ -35,10 +35,8 @@ Check(Screen.Overlaps(week, rooms, M("new", 9, 10) with { Place = "Hội trườ
 var global = new DisplaySettings { Theme = "official" }.Over(DisplaySettings.Defaults);
 var merged = new DisplaySettings { Theme = "formal", FooterNote = "" }.Over(global);
 Check(merged.Theme == "formal" && merged.Clock == true && merged.FooterNote == "", "room override wins, unset fields inherit");
-var withContact = new DisplaySettings { ContactEnabled = true, Contact = "Văn phòng UBND" }.Over(DisplaySettings.Defaults);
-var roomOff = new DisplaySettings { ContactEnabled = false }.Over(withContact);
-Check(DisplaySettings.Defaults.ContactEnabled == false && withContact.Contact == "Văn phòng UBND" && roomOff.ContactEnabled == false && roomOff.Contact == "Văn phòng UBND",
-    "contact line is off by default, a room can turn it off and still inherit the text");
+var oldSettings = JsonSerializer.Deserialize<DisplaySettings>("{\"theme\":\"formal\",\"contactEnabled\":true,\"contact\":\"x\"}", Json.Compact);
+Check(oldSettings?.Theme == "formal", "settings saved before the contact moved to meetings still load");
 
 Check(Screen.WeekStart(new(2026, 10, 25)) == new DateOnly(2026, 10, 19), "Sunday belongs to the week starting Monday");
 Check(Screen.WeekStart(new(2026, 10, 19)) == new DateOnly(2026, 10, 19), "Monday is its own week start");
@@ -55,7 +53,7 @@ var afternoon = new Session(new(13, 30), new(17, 30));
 // Same layout as Lichdonvi_*.xlsx: title, merged "Thời gian" header, "*****", day rows, Sáng/Chiều rows.
 var good = Sheet(
     ["Thứ 2, 19/10/2026"],
-    ["Sáng", "08:00 - 09:30", "Giao ban tuần", "Chủ tịch UBND phường", "Lãnh đạo UBND", "Phòng họp tầng 2", ""],
+    ["Sáng", "08:00 - 09:30", "Giao ban tuần", "Chủ tịch UBND phường", "Lãnh đạo UBND", "Phòng họp tầng 2", "", "Đ/c Lan – Văn phòng"],
     ["", "10h", "Họp chuyển đổi số", "Phó Chủ tịch", "", " phòng họp  TẦNG 2", ""],
     ["Chiều", "", "Rà soát hồ sơ đất đai", "Trưởng phòng Kinh tế", "", "Hội trường", ""],
     ["", "15:00", "Họp tổ công tác", "", "", "Hội trường", ""],
@@ -70,6 +68,8 @@ Check(w.From == new DateOnly(2026, 10, 19) && w.To == new DateOnly(2026, 10, 25)
 Check(w.Meetings.Count == 5, "5 meetings, empty Sáng/Chiều rows skipped");
 var m0 = w.Meetings[0];
 Check(m0.Start == new TimeOnly(8, 0) && m0.End == new TimeOnly(9, 30) && !m0.EndEstimated && m0.Chair == "Chủ tịch UBND phường", "explicit range 08:00 - 09:30");
+Check(m0.Contact == "Đ/c Lan – Văn phòng" && m0.ShowContact && w.Meetings[1] is { Contact: "", ShowContact: false },
+    "optional Liên hệ column: filled cell shows on screen, empty cell shows nothing");
 Check(w.Meetings[1].Start == new TimeOnly(10, 0) && w.Meetings[1].End == new TimeOnly(11, 30) && w.Meetings[1].EndEstimated,
     "'10h' with no end runs to the end of the morning session");
 Check(w.Meetings[2].Start == new TimeOnly(13, 30) && w.Meetings[2].End == new TimeOnly(15, 0),
@@ -163,7 +163,7 @@ finally
 Console.WriteLine("SelfCheck OK");
 
 static string Key(Meeting m) =>
-    $"{m.Date}|{m.Start}|{m.End}|{m.EndEstimated}|{m.Title}|{m.Chair}|{m.Participants}|{Screen.Norm(m.Place)}|{m.Note}|{m.Status}";
+    $"{m.Date}|{m.Start}|{m.End}|{m.EndEstimated}|{m.Title}|{m.Chair}|{m.Participants}|{Screen.Norm(m.Place)}|{m.Note}|{m.Contact}|{m.ShowContact}|{m.Status}";
 
 // Builds a workbook in the ward export layout. A one-cell row is a merged day row.
 static MemoryStream Sheet(params object[][] rows)
@@ -172,7 +172,7 @@ static MemoryStream Sheet(params object[][] rows)
     var ws = wb.AddWorksheet("Sheet1");
     ws.Range(1, 1, 1, 7).Merge().Value = "LỊCH TUẦN - ỦY BAN NHÂN DÂN PHƯỜNG XUÂN HÒA\r\n (19/10/2026-25/10/2026)";
     ws.Range(2, 1, 2, 2).Merge().Value = "Thời gian";
-    string[] heads = ["Nội dung", "Chủ trì", "Thành phần", "Địa điểm", "Ghi chú"];
+    string[] heads = ["Nội dung", "Chủ trì", "Thành phần", "Địa điểm", "Ghi chú", "Liên hệ"];
     for (var i = 0; i < heads.Length; i++) ws.Cell(2, 3 + i).Value = heads[i];
     ws.Cell(3, 1).Value = "*****";
     var r = 4;

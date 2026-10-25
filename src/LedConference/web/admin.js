@@ -10,8 +10,7 @@ const EMPTY_DAYS = [['nextMeeting', 'Cuộc họp gần nhất sắp tới'], ['
 const SKYLINES = [['normal', 'Thường'], ['strong', 'Đậm'], ['off', 'Tắt']];
 const STATUSES = [['normal', 'Bình thường'], ['postponed', 'Hoãn – màn hình hiện “ĐÃ HOÃN”'], ['cancelled', 'Huỷ – ẩn khỏi màn hình']];
 const SWITCHES = [['clock', 'Đồng hồ', 'Giờ và ngày ở góc phải'], ['footer', 'Chân trang', 'Tuần lịch, ghi chú, giờ cập nhật'],
-  ['reduceMotion', 'Giảm chuyển động', 'Tắt hiệu ứng chuyển cảnh'], ['hideCursor', 'Ẩn con trỏ chuột', 'Khi có chuột cắm vào màn hình'],
-  ['contactEnabled', 'Dòng liên hệ', 'Hiện “Liên hệ: …” dưới Ghi chú']];
+  ['reduceMotion', 'Giảm chuyển động', 'Tắt hiệu ứng chuyển cảnh'], ['hideCursor', 'Ẩn con trỏ chuột', 'Khi có chuột cắm vào màn hình']];
 const ACTIONS = {
   'meeting.create': 'Thêm cuộc họp', 'meeting.update': 'Sửa cuộc họp', 'meeting.delete': 'Xoá cuộc họp',
   'room.create': 'Thêm phòng', 'room.update': 'Sửa phòng', 'room.delete': 'Xoá phòng', import: 'Nhập Excel',
@@ -201,7 +200,7 @@ async function pageSchedule(app) {
   // Re-rendered on every keystroke in the search box, without rebuilding the page (keeps focus in the box).
   function fill() {
     const q = fold(S.q.trim());
-    const items = q ? inRoom.filter(m => fold([m.title, m.chair, m.participants, m.note, m.place, m.roomCode].join(' ')).includes(q)) : inRoom;
+    const items = q ? inRoom.filter(m => fold([m.title, m.chair, m.participants, m.note, m.contact, m.place, m.roomCode].join(' ')).includes(q)) : inRoom;
     summary.textContent = q ? `Tìm thấy ${items.length} cuộc họp` : `${items.length} cuộc họp trong tuần`;
     const days = [];
     for (let i = 0; i < 7; i++) {
@@ -241,6 +240,7 @@ function meetingRow(m, live) {
     h('div', { class: 'row' },
       m.roomCode ? h('span', { class: 'chip room' }, m.roomCode) : h('span', { class: 'chip unassigned', title: 'Địa điểm chưa gán phòng' }, m.place),
       h('span', { class: 'chip ' + (m.source === 'manual' ? 'manual' : '') }, m.source === 'manual' ? 'Sửa tay' : 'Excel'),
+      m.showContact && m.contact && h('span', { class: 'chip', title: 'Liên hệ: ' + m.contact }, 'LH'),
       live && h('span', { class: 'chip live' }, 'Đang họp'),
       m.status === 'postponed' && h('span', { class: 'chip postponed' }, 'Đã hoãn'),
       m.status === 'cancelled' && h('span', { class: 'chip cancelled' }, 'Đã huỷ')),
@@ -279,9 +279,15 @@ function meetingEditor(m, rooms, week) {
     chair: h('input', { type: 'text', 'data-field': 'chair', value: m.chair || '', maxLength: 200 }),
     participants: h('input', { type: 'text', 'data-field': 'participants', value: m.participants || '', maxLength: 500 }),
     note: h('input', { type: 'text', 'data-field': 'note', value: m.note || '', maxLength: 500 }),
+    contact: h('input', { type: 'text', 'data-field': 'contact', value: m.contact || '', maxLength: 200, placeholder: 'Ví dụ: Đ/c Lan – Văn phòng UBND, 0909 xxx xxx' }),
     status: h('select', { 'data-field': 'status' }, options(STATUSES, m.status || 'normal')),
   };
   const warnings = h('div');
+  const contactSwitch = switchRow('showContact', 'Hiện dòng liên hệ trên màn hình', 'Tắt thì vẫn giữ nội dung, chỉ không hiện lên màn hình.', !!m.showContact);
+  const showContact = contactSwitch.querySelector('input');
+  // Typing a contact into an empty box usually means it should show; the switch can still be turned off.
+  if (!m.contact) inputs.contact.addEventListener('input', () => { if (!showContact.dataset.touched) showContact.checked = inputs.contact.value.trim() !== ''; });
+  showContact.addEventListener('change', () => { showContact.dataset.touched = '1'; });
 
   const form = h('form', { class: 'card editor', 'aria-label': isNew ? 'Thêm cuộc họp' : 'Sửa cuộc họp' },
     h('div', { class: 'row between' },
@@ -296,6 +302,8 @@ function meetingEditor(m, rooms, week) {
     field('Chủ trì', inputs.chair),
     field('Thành phần', inputs.participants),
     field('Ghi chú', inputs.note),
+    field('Liên hệ', inputs.contact, 'Hiện là “Liên hệ: …” dưới Ghi chú khi đang họp, và dưới cuộc họp tiếp theo khi phòng trống.'),
+    contactSwitch,
     field('Trạng thái', inputs.status),
     warnings,
     h('div', { class: 'row' },
@@ -310,6 +318,7 @@ function meetingEditor(m, rooms, week) {
     const body = {
       date: inputs.date.value, start: inputs.start.value, end: inputs.end.value, title: inputs.title.value,
       chair: inputs.chair.value, participants: inputs.participants.value, note: inputs.note.value, status: inputs.status.value,
+      contact: inputs.contact.value, showContact: showContact.checked,
       roomCode: roomSel.value || null, place: roomSel.value ? null : place.value,
     };
     try {
@@ -522,8 +531,6 @@ function appearanceCard(settings, themes) {
   const emptyDay = h('select', { 'data-field': 'display.emptyDay' }, options(EMPTY_DAYS, d.emptyDay));
   const skyline = h('select', { 'data-field': 'display.skyline' }, options(SKYLINES, d.skyline || 'normal'));
   const note = h('input', { type: 'text', 'data-field': 'display.footerNote', value: d.footerNote || '', maxLength: 200, placeholder: 'Để trống thì không hiện' });
-  const contact = h('input', { type: 'text', 'data-field': 'display.contact', value: d.contact || '', maxLength: 200,
-    placeholder: 'Ví dụ: Văn phòng HĐND – UBND phường, điện thoại …' });
   const form = h('form', { class: 'card' },
     h('div', { class: 'row between' },
       h('div', null, h('h2', { class: 'card-title' }, 'Giao diện màn hình (cấu hình chung)'),
@@ -534,14 +541,13 @@ function appearanceCard(settings, themes) {
     h('div', { class: 'grid' }, field('Hiệu ứng chuyển cảnh', effect), field('Màn hình đứng hay ngang', orientation),
       field('Khi hết lịch trong ngày, hiện', emptyDay), field('Hình đường chân trời', skyline)),
     field('Dòng ghi chú cố định ở chân màn hình', note),
-    field('Nội dung dòng liên hệ', contact, 'Hiện là “Liên hệ: …” dưới Ghi chú khi bật công tắc “Dòng liên hệ” bên dưới.'),
     h('div', { class: 'grid', style: 'gap:4px 24px' }, SWITCHES.map(([k, label, hint]) => switchRow(k, label, hint, !!d[k]))),
     h('div', null, h('button', { class: 'btn primary', type: 'submit' }, 'Lưu giao diện')));
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
     const display = {
       theme: form.querySelector('input[name=theme]:checked').value, effect: effect.value, orientation: orientation.value,
-      emptyDay: emptyDay.value, skyline: skyline.value, footerNote: note.value.trim(), contact: contact.value.trim(),
+      emptyDay: emptyDay.value, skyline: skyline.value, footerNote: note.value.trim(),
     };
     for (const [k] of SWITCHES) display[k] = form.querySelector(`input[name=${k}]`).checked;
     try { await api('PUT', '/api/settings', { display }); toast('Đã lưu giao diện.'); route(); } catch (e) { showErrors(form, e); }
@@ -652,7 +658,6 @@ async function pageRoom(app, code) {
     ['footer', 'Chân trang', onOff, String(g.footer)],
     ['reduceMotion', 'Giảm chuyển động', yesNo, String(g.reduceMotion)],
     ['hideCursor', 'Ẩn con trỏ chuột', yesNo, String(g.hideCursor)],
-    ['contactEnabled', 'Dòng liên hệ', onOff, String(!!g.contactEnabled)],
   ];
   const selects = {};
   const rows = defs.map(([key, label, pairs, global]) => {
@@ -688,7 +693,6 @@ async function pageRoom(app, code) {
   };
   const texts = [
     textOverride('footerNote', 'Ghi chú ở chân màn hình', 'Ghi chú riêng', 'Để trống để phòng này không hiện ghi chú'),
-    textOverride('contact', 'Nội dung dòng liên hệ', 'Liên hệ riêng', 'Ví dụ: Bộ phận một cửa, điện thoại …'),
   ];
 
   const form = h('form', { class: 'stack' },

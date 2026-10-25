@@ -9,7 +9,6 @@
   var DEFAULT_DISPLAY = {
     theme: 'official', orientation: 'auto', effect: 'fadeUp', clock: true, footer: true,
     reduceMotion: false, hideCursor: true, footerNote: '', emptyDay: 'nextMeeting', skyline: 'normal',
-    contactEnabled: false, contact: '',
   };
   // Same values as Theme.BuiltIn in Models.cs.
   var BUILTIN = [
@@ -56,14 +55,14 @@
     function add(date, start, end, title, chair, place, extra) {
       meetings.push(Object.assign({
         id: id('m_'), date: date, start: hm(start), end: hm(end), endEstimated: false, title: title, chair: chair || '',
-        participants: '', note: '', place: place, status: 'normal', source: 'excel', importId: 'imp_mau',
+        participants: '', note: '', contact: '', showContact: false, place: place, status: 'normal', source: 'excel', importId: 'imp_mau',
         updatedAt: at, updatedBy: '192.168.1.20',
       }, extra || {}));
     }
     add(today, s0, s0 + 120, 'Giao ban tuần và triển khai nhiệm vụ trọng tâm', 'Chủ tịch UBND phường', 'Phòng họp tầng 2',
-      { participants: 'Lãnh đạo UBND, trưởng các phòng chuyên môn', note: 'Các phòng chuẩn bị báo cáo tuần' });
+      { participants: 'Lãnh đạo UBND, trưởng các phòng chuyên môn', note: 'Các phòng chuẩn bị báo cáo tuần', contact: 'Đ/c Lan – Văn phòng UBND', showContact: true });
     add(today, s0 + 150, s0 + 210, 'Họp triển khai kế hoạch chuyển đổi số', 'Phó Chủ tịch UBND phường', 'Phòng họp số 2',
-      { source: 'manual', importId: null });
+      { source: 'manual', importId: null, contact: 'Đ/c Minh – phòng Văn hóa – Xã hội', showContact: true });
     add(today, s0 + 240, s0 + 300, 'Họp chuẩn bị hội nghị cuối năm', 'Chánh Văn phòng', 'Phòng họp tầng 2', { status: 'postponed' });
     add(today, s0 + 60, s0 + 120, 'Rà soát hồ sơ đất đai tồn đọng', 'Trưởng phòng Kinh tế', 'PH tầng 1', { endEstimated: true });
     add(today, s0, s0 + 120,
@@ -86,7 +85,7 @@
       settings: {
         screenPort: 8080, adminPort: 8081, adminAllow: ['0.0.0.0/0', '::/0'],
         org: { line1: 'ỦY BAN NHÂN DÂN', line2: 'PHƯỜNG XUÂN HÒA' },
-        display: Object.assign(clone(DEFAULT_DISPLAY), { contactEnabled: true, contact: 'Văn phòng HĐND – UBND phường' }),
+        display: clone(DEFAULT_DISPLAY),
         morning: { start: '07:30', end: '11:30' }, afternoon: { start: '13:30', end: '17:30' },
         ignoredPlaces: [], logoVersion: 0,
       },
@@ -134,7 +133,7 @@
   }
   function pub(m) {
     return m && { id: m.id, date: m.date, start: m.start, end: m.end, endEstimated: m.endEstimated, title: m.title,
-      chair: m.chair, participants: m.participants, note: m.note, status: m.status };
+      chair: m.chair, participants: m.participants, note: m.note, contact: m.showContact ? m.contact || '' : '', status: m.status };
   }
   function adminView(st, m) { var r = roomOf(st, m.place); return Object.assign({}, m, { roomCode: r ? r.code : null }); }
   // Sample screen status for the admin's "Phòng & màn hình" tab: one app online, one browser gone quiet, one never seen.
@@ -165,8 +164,7 @@
     var upcoming = todays.filter(function (m) { return m !== current && m.end > t; });
     var next = !current && !upcoming.length && s.emptyDay === 'nextMeeting' ? list.find(function (m) { return m.date > today; }) || null : null;
     var org = { line1: st.settings.org.line1, line2: st.settings.org.line2, logoUrl: 'logo.webp?v=' + st.settings.logoVersion, customLogo: false };
-    var display = Object.assign({}, s, { theme: theme, contact: s.contactEnabled ? s.contact : '' });
-    delete display.contactEnabled;
+    var display = Object.assign({}, s, { theme: theme });
     return ok({
       apiVersion: 1, room: { code: room.code, name: room.name }, org: org,
       serverTime: today + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()),
@@ -268,7 +266,7 @@
         if (method === 'PUT' && !old) return problem(404, 'Không tìm thấy cuộc họp', parts[1]);
         m = Object.assign({}, old || { id: id('m_'), importId: null }, {
           date: b.date, start: b.start, end: b.end, endEstimated: false, title: b.title.trim(), chair: (b.chair || '').trim(),
-          participants: (b.participants || '').trim(), note: (b.note || '').trim(), place: c.place, status: b.status || 'normal',
+          participants: (b.participants || '').trim(), note: (b.note || '').trim(), contact: (b.contact || '').trim(), showContact: !!b.showContact, place: c.place, status: b.status || 'normal',
           source: 'manual', updatedAt: new Date().toISOString().slice(0, 19), updatedBy: '192.168.1.20',
         });
         if (old) st.meetings[st.meetings.indexOf(old)] = m; else st.meetings.push(m);

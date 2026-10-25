@@ -46,7 +46,6 @@ báo “đang chạy / mất kết nối” (quá 3 phút không lấy lịch). 
     "footerNote": "Đề nghị tắt chuông điện thoại khi vào phòng họp",
     "emptyDay": "nextMeeting",
     "skyline": "normal",
-    "contact": "Văn phòng HĐND – UBND phường",
     "theme": {
       "id": "official", "name": "Chính thức", "bgAngle": 180,
       "bg1": "#D0EDFF", "bg2": "#8ACAFF", "ink": "#0B2545", "muted": "#2A4A73",
@@ -60,7 +59,7 @@ báo “đang chạy / mất kết nối” (quá 3 phút không lấy lịch). 
   "current": {
     "id": "m_8f3k2", "date": "2026-10-22", "start": "08:00", "end": "09:30", "endEstimated": false,
     "title": "Giao ban tuần", "chair": "Chủ tịch UBND phường",
-    "participants": "Lãnh đạo UBND", "note": "", "status": "normal"
+    "participants": "Lãnh đạo UBND", "note": "", "contact": "Đ/c Lan – Văn phòng UBND", "status": "normal"
   },
   "upcoming": [],
   "next": null
@@ -79,13 +78,13 @@ báo “đang chạy / mất kết nối” (quá 3 phút không lấy lịch). 
   (hoặc `skylineStrongOpacity` khi `strong`), canh đáy, phủ toàn chiều rộng, nằm dưới nội dung.
 - `display.orientation`: `auto` (tự theo khung hình) | `portrait` | `landscape`.
 - `display.effect`: `fadeUp` | `zoom` | `slideLeft` | `shine` | `border`. Bỏ qua khi `reduceMotion` = true.
-- `display.contact`: nội dung dòng “Liên hệ: …” (dưới Ghi chú khi đang họp, dưới cuộc họp tiếp theo khi phòng trống).
-  Chuỗi rỗng = không hiện (đã tắt trong cấu hình hoặc chưa nhập nội dung).
 - `display.emptyDay`: `nextMeeting` (hết lịch hôm nay thì hiện cuộc họp gần nhất ngày sau) | `free`.
 - `display.theme`: mọi màu dạng `#RRGGBB`, riêng `card` và `cardBorder` có thể là `rgba(r,g,b,a)`.
   Nền = gradient `bg1 → bg2` theo góc `bgAngle`, phủ lớp chấm tròn màu `dot` độ đậm `dotOpacity`, lưới 36px.
 - Cuộc họp: `start`/`end` dạng `HH:mm`. `endEstimated` = true khi giờ kết thúc do máy chủ tự tính.
-  `status`: `normal` | `postponed` (hiện nhãn "ĐÃ HOÃN"). Cuộc họp huỷ không bao giờ có trong kết quả.
+  `status`: `normal` | `postponed` (hiện nhãn "ĐÃ HOÃN").
+  `contact`: dòng “Liên hệ: …” của cuộc họp (dưới Ghi chú khi đang họp, dưới cuộc họp tiếp theo khi phòng trống);
+  chuỗi rỗng = không hiện (cuộc họp không có liên hệ hoặc đã tắt dòng liên hệ). Cuộc họp huỷ không bao giờ có trong kết quả.
 - `current`: cuộc họp đang diễn ra (`start` ≤ bây giờ < `end`), hoặc `null` khi phòng trống.
 - `upcoming`: phần còn lại của hôm nay chưa kết thúc, theo giờ bắt đầu.
 - `next`: cuộc họp đầu tiên của ngày sau; chỉ có khi hôm nay không còn gì và `emptyDay` = `nextMeeting`.

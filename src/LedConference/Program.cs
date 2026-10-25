@@ -212,7 +212,6 @@ app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
     var display = new
     {
         s.Orientation, s.Effect, s.Clock, s.Footer, s.ReduceMotion, s.HideCursor, s.FooterNote, s.EmptyDay, s.Skyline,
-        contact = s.ContactEnabled == true ? s.Contact : "", // empty = no "Liên hệ" line
         theme,
     };
     var org = new
@@ -340,6 +339,8 @@ app.MapPost("/api/meetings", (MeetingInput input, HttpContext ctx) =>
         Chair = Clean(input.Chair),
         Participants = Clean(input.Participants),
         Note = Clean(input.Note),
+        Contact = Clean(input.Contact),
+        ShowContact = input.ShowContact ?? false,
         Place = place,
         Status = input.Status ?? MeetingStatus.Normal,
         Source = "manual",
@@ -366,6 +367,8 @@ app.MapPut("/api/meetings/{id}", (string id, MeetingInput input, HttpContext ctx
         Chair = Clean(input.Chair),
         Participants = Clean(input.Participants),
         Note = Clean(input.Note),
+        Contact = Clean(input.Contact),
+        ShowContact = input.ShowContact ?? old.ShowContact,
         Place = place,
         Status = input.Status ?? old.Status,
         Source = "manual",
@@ -655,12 +658,13 @@ app.Run();
 
 static DisplaySettings GlobalDisplay(Data d) => d.Settings.Display.Over(DisplaySettings.Defaults);
 
+// A switched-off contact never leaves the server: the screen gets "" and shows no "Liên hệ" line.
 static object PublicView(Meeting m) =>
-    new { m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants, m.Note, m.Status };
+    new { m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants, m.Note, contact = m.ShowContact ? m.Contact : "", m.Status };
 
 static object AdminView(Meeting m, IEnumerable<Room> rooms) => new
 {
-    m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants, m.Note, m.Place,
+    m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants, m.Note, m.Contact, m.ShowContact, m.Place,
     roomCode = Screen.RoomOf(rooms, m.Place)?.Code,
     m.Status, m.Source, m.ImportId, m.UpdatedAt, m.UpdatedBy,
 };
@@ -692,6 +696,7 @@ static Dictionary<string, string[]> CheckMeeting(MeetingInput i, Data d, out str
     Len(e, "chair", i.Chair, 200);
     Len(e, "participants", i.Participants, 500);
     Len(e, "note", i.Note, 500);
+    Len(e, "contact", i.Contact, 200);
     Len(e, "place", i.Place, 200);
     if (!string.IsNullOrWhiteSpace(i.RoomCode))
     {
@@ -725,7 +730,6 @@ static void CheckDisplay(Dictionary<string, string[]> e, DisplaySettings? s, IEn
     if (s.EmptyDay is not null && !DisplaySettings.EmptyDays.Contains(s.EmptyDay)) e["display.emptyDay"] = ["Giá trị không hợp lệ."];
     if (s.Skyline is not null && !DisplaySettings.Skylines.Contains(s.Skyline)) e["display.skyline"] = ["Giá trị không hợp lệ."];
     Len(e, "display.footerNote", s.FooterNote, 200);
-    Len(e, "display.contact", s.Contact, 200);
 }
 
 static Room ToRoom(RoomInput i, string code) => new()
@@ -796,7 +800,7 @@ record RoomInput(string? Code, string? Name, List<string>? Places, DisplaySettin
 
 record MeetingInput(
     DateOnly? Date, TimeOnly? Start, TimeOnly? End, string? Title, string? Chair, string? Participants,
-    string? Note, string? Place, string? RoomCode, MeetingStatus? Status);
+    string? Note, string? Place, string? RoomCode, MeetingStatus? Status, string? Contact = null, bool? ShowContact = null);
 
 record SettingsInput(Org? Org, DisplaySettings? Display, Session? Morning, Session? Afternoon);
 

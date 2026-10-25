@@ -20,6 +20,9 @@ public sealed record Meeting
     public string Chair { get; init; } = "";
     public string Participants { get; init; } = "";
     public string Note { get; init; } = "";
+    // "Liên hệ: …" line on the screen for this meeting; the text is kept when the line is switched off.
+    public string Contact { get; init; } = "";
+    public bool ShowContact { get; init; }
     // The room is resolved from Place at read time, so assigning a place later applies to old meetings too.
     public string Place { get; init; } = "";
     public MeetingStatus Status { get; init; }
@@ -43,15 +46,11 @@ public sealed record DisplaySettings
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? EmptyDay { get; init; }
     // The ward skyline drawing behind the content, tinted by the theme.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Skyline { get; init; }
-    // "Liên hệ: …" line under Ghi chú on the screen.
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? ContactEnabled { get; init; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Contact { get; init; }
 
     public static readonly DisplaySettings Defaults = new()
     {
         Theme = "official", Orientation = "auto", Effect = "fadeUp", Clock = true, Footer = true,
         ReduceMotion = false, HideCursor = true, FooterNote = "", EmptyDay = "nextMeeting", Skyline = "normal",
-        ContactEnabled = false, Contact = "",
     };
 
     public static readonly string[] Orientations = ["auto", "portrait", "landscape"];
@@ -71,8 +70,6 @@ public sealed record DisplaySettings
         FooterNote = FooterNote ?? g.FooterNote,
         EmptyDay = EmptyDay ?? g.EmptyDay,
         Skyline = Skyline ?? g.Skyline,
-        ContactEnabled = ContactEnabled ?? g.ContactEnabled,
-        Contact = Contact ?? g.Contact,
     };
 }
 

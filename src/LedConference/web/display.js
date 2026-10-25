@@ -130,24 +130,22 @@
       addMeta(dl, 'Chủ trì', m.chair, 'chair');
       addMeta(dl, 'Thành phần', m.participants, 'parts');
       addMeta(dl, 'Ghi chú', m.note, 'note');
-      addMeta(dl, 'Liên hệ', d.display.contact, 'contact'); // empty when turned off in the config
+      addMeta(dl, 'Liên hệ', m.contact, 'contact'); // empty when switched off on the meeting
       if (dl.childNodes.length) box.appendChild(dl);
       return m.id;
     }
 
     box.appendChild(el('span', 'pill free', 'PHÒNG TRỐNG'));
     var next = d.upcoming.filter(function (x) { return x.status === 'normal'; })[0] || d.next;
-    var contact = d.display.contact ? el('div', 'sub', 'Liên hệ: ' + d.display.contact) : null;
     if (!next) {
       box.appendChild(el('div', 'sub', 'Không có lịch họp'));
-      if (contact) box.appendChild(contact);
       return 'free';
     }
     box.appendChild(el('div', 'sub', next === d.next ? 'Cuộc họp tiếp theo ' + dayLabel(next.date) + ' lúc' : 'Cuộc họp tiếp theo lúc'));
     box.appendChild(el('div', 'big', next.start));
     box.appendChild(el('h2', 'title', next.title));
     if (next.chair) box.appendChild(el('div', 'sub chair', 'Chủ trì: ' + next.chair));
-    if (contact) box.appendChild(contact);
+    if (next.contact) box.appendChild(el('div', 'sub contact', 'Liên hệ: ' + next.contact));
     return 'free:' + next.id;
   }
 
