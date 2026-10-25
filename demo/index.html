@@ -37,6 +37,16 @@ iframe { display: block; border: 0; background: var(--frame); max-width: 100%; }
 .admin iframe { width: 100%; height: max(78vh, 640px); background: #F8FAFC; }
 .notes { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; max-width: 80ch; }
 .notes code { font-size: 13px; }
+.gallery { display: grid; gap: 20px; }
+.gallery h2 { margin: 0; font-size: 16px; }
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
+.shots.tall { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+figure img { display: block; width: 100%; height: auto; border-radius: 6px; background: var(--frame); }
+figcaption { margin-top: 8px; font-size: 14px; color: var(--muted); }
+figcaption strong { color: var(--fg); }
+.app .stage { display: none; }
+[hidden] { display: none !important; }
 </style>
 
 <header>
@@ -57,6 +67,7 @@ iframe { display: block; border: 0; background: var(--frame); max-width: 100%; }
       <button role="tab" id="tab-ngang" aria-controls="frame" data-view="ngang">Màn hình ngang</button>
       <button role="tab" id="tab-doc" aria-controls="frame" data-view="doc">Màn hình dọc</button>
       <button role="tab" id="tab-quantri" aria-controls="frame" data-view="quantri">Trang quản trị</button>
+      <button role="tab" id="tab-app" aria-controls="gallery" data-view="app">App Android</button>
     </div>
     <div class="tools">
       <label id="roomPick">Phòng
@@ -75,8 +86,25 @@ iframe { display: block; border: 0; background: var(--frame); max-width: 100%; }
     <iframe id="frame" title="Màn hình phòng họp"></iframe>
   </div>
 
+  <section class="gallery" id="gallery" hidden aria-label="Ảnh chụp app Android">
+    <p class="intro">Ứng dụng <strong>Lịch họp Xuân Hòa</strong> cài trên standee Android. Ảnh chụp từ thiết bị giả lập 1920×1080, kết nối máy chủ thật.</p>
+    <h2>Standee ngang (1920×1080)</h2>
+    <div class="shots">
+      <figure><img src="screens/app-cai-dat.jpg" alt="Màn cài đặt: danh sách máy chủ tìm thấy trong mạng LAN, ô nhập địa chỉ máy chủ" width="960" height="540" loading="lazy"><figcaption><strong>① Cài đặt</strong> – tự quét mạng LAN, hiện máy chủ tìm thấy; không thấy thì nhập IP.</figcaption></figure>
+      <figure><img src="screens/app-chieu-ngang.jpg" alt="Màn hình chiếu lịch họp ngang" width="960" height="540" loading="lazy"><figcaption><strong>③ Chiếu lịch</strong> – toàn màn hình, luôn sáng, cập nhật mỗi 60 giây.</figcaption></figure>
+      <figure><img src="screens/app-menu.jpg" alt="Menu khi bấm Back hoặc giữ tay lâu" width="960" height="540" loading="lazy"><figcaption><strong>Menu</strong> – bấm Back trên remote hoặc giữ tay lâu: đổi phòng, tải lại.</figcaption></figure>
+    </div>
+    <h2>Standee dọc (1080×1920)</h2>
+    <div class="shots tall">
+      <figure><img src="screens/app-chon-phong.jpg" alt="Bước chọn phòng" width="540" height="960" loading="lazy"><figcaption><strong>② Chọn phòng</strong> – thẻ lớn, chọn bằng tay hoặc remote.</figcaption></figure>
+      <figure><img src="screens/app-man-cho.jpg" alt="Màn chờ có logo phường" width="540" height="960" loading="lazy"><figcaption><strong>Màn chờ</strong> – hiện trong lúc tải lịch.</figcaption></figure>
+      <figure><img src="screens/app-chieu-doc.jpg" alt="Màn hình chiếu lịch họp dọc" width="540" height="960" loading="lazy"><figcaption><strong>Chiếu lịch</strong> – bố cục dọc tự đổi theo màn hình.</figcaption></figure>
+    </div>
+  </section>
+
   <ul class="notes">
-    <li>Màn hình ngang/dọc là đúng trang màn hình chạy trên standee (Fully Kiosk); trang quản trị là đúng trang mở ở <code>http://&lt;IP máy chủ&gt;:8081/</code>.</li>
+    <li>Màn hình ngang/dọc là đúng trang màn hình chạy trên standee (app Android hoặc Fully Kiosk); trang quản trị là đúng trang mở ở <code>http://&lt;IP máy chủ&gt;:8081/</code>, gồm 5 tab: Lịch họp, Nhập Excel, Phòng &amp; màn hình, Giao diện, Hệ thống.</li>
+    <li>Trạng thái “đang chạy / mất kết nối” ở tab Phòng &amp; màn hình trong bản mẫu là dữ liệu giả.</li>
     <li>Bản mẫu không đọc được file Excel và không tải file về; trên máy chủ thật các nút đó hoạt động bình thường.</li>
     <li>Dữ liệu mẫu chỉ lưu trong trình duyệt của bạn và tự tạo lại mỗi ngày theo giờ hiện tại.</li>
   </ul>
@@ -95,8 +123,11 @@ iframe { display: block; border: 0; background: var(--frame); max-width: 100%; }
     view = name;
     tabs.forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.view === name)); });
     panel.setAttribute('aria-labelledby', 'tab-' + name);
-    main.className = 'wrap ' + (name === 'quantri' ? 'admin' : name === 'doc' ? 'portrait' : 'landscape');
-    document.getElementById('roomPick').hidden = name === 'quantri';
+    main.className = 'wrap ' + (name === 'app' ? 'app' : name === 'quantri' ? 'admin' : name === 'doc' ? 'portrait' : 'landscape');
+    document.getElementById('roomPick').hidden = name === 'quantri' || name === 'app';
+    document.getElementById('gallery').hidden = name !== 'app';
+    document.querySelector('.tools').hidden = name === 'app';
+    if (name === 'app') { frame.removeAttribute('src'); try { history.replaceState(null, '', '#app'); } catch (e) { /* not essential */ } return; }
     if (!keepRoom && defaults[name]) room.value = defaults[name];
     frame.title = name === 'quantri' ? 'Trang quản trị' : 'Màn hình phòng họp';
     frame.src = name === 'quantri' ? 'admin.html#/lich' : 'display.html?room=' + room.value + '&v=' + Date.now();
@@ -112,6 +143,6 @@ iframe { display: block; border: 0; background: var(--frame); max-width: 100%; }
   });
 
   var start = location.hash.replace('#', '');
-  show(defaults[start] || start === 'quantri' ? start : 'ngang');
+  show(defaults[start] || start === 'quantri' || start === 'app' ? start : 'ngang');
 })();
 </script>

@@ -739,7 +739,9 @@ async function pageRoom(app, code) {
 
 // The real screen page in a frame, scaled like the device. ?preview=1 keeps it out of the screen status list.
 function previewCard(room, portrait) {
-  const frame = h('iframe', { src: room.screenUrl + '?preview=1', title: 'Xem trước màn hình ' + room.code, loading: 'lazy' });
+  const url = new URL(room.screenUrl);
+  url.searchParams.set('preview', '1');
+  const frame = h('iframe', { src: url.href, title: 'Xem trước màn hình ' + room.code, loading: 'lazy' });
   const st = screenStatus(room);
   return [
     h('section', { class: 'card' },

@@ -24,4 +24,5 @@ foreach ($f in Get-ChildItem $web) {
 }
 Copy-Item (Join-Path $PSScriptRoot 'mock.js') $out
 Copy-Item (Join-Path $PSScriptRoot 'index.html') $out
+Copy-Item (Join-Path $PSScriptRoot 'screens') (Join-Path $out 'screens') -Recurse
 Write-Host "demo\site ready:" (Get-ChildItem $out | ForEach-Object Name)

@@ -137,6 +137,16 @@
       chair: m.chair, participants: m.participants, note: m.note, status: m.status };
   }
   function adminView(st, m) { var r = roomOf(st, m.place); return Object.assign({}, m, { roomCode: r ? r.code : null }); }
+  // Sample screen status for the admin's "Phòng & màn hình" tab: one app online, one browser gone quiet, one never seen.
+  function demoScreens(code) {
+    var ago = function (min) {
+      var d = new Date(Date.now() - min * 60000), p = function (n) { return String(n).padStart(2, '0'); };
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    };
+    if (code === 'P201') return [{ ip: '192.168.1.51', lastSeen: ago(0.5), client: 'apk', online: true }];
+    if (code === 'P101') return [{ ip: '192.168.1.52', lastSeen: ago(95), client: 'web', online: false }];
+    return [];
+  }
   function byTime(a, b) { return (a.date + a.start).localeCompare(b.date + b.start); }
 
   function screen(st, code) {
@@ -219,7 +229,8 @@
         return ok(st.rooms.map(function (x) {
           return Object.assign({}, x, {
             todayCount: st.meetings.filter(function (mm) { return mm.date === today && mm.status !== 'cancelled' && matches(x, mm.place); }).length,
-            screenUrl: 'display.html?room=' + x.code,
+            screenUrl: new URL('display.html?room=' + x.code, location.href).href,
+            screens: demoScreens(x.code),
           });
         }));
       case 'POST rooms':
