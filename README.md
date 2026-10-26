@@ -215,7 +215,13 @@ src\LedConference\   máy chủ (.NET 10, ASP.NET Core Minimal API)
                       EmbeddedAssets (file nhúng trong exe), Api (trả lỗi, IP, mã, diff)
   Services\           ScreenStatus (màn hình đang chạy), LogoFiles, ThemeWatcher, RetentionCleanup (chạy nền)
   Endpoints\          mỗi nhóm API một file (Screen, Room, Meeting, Excel, Place, Settings, Theme, Logo, Page) + Views
-  web\                trang màn hình, trang quản trị, logo, hình đường chân trời (nhúng vào exe)
+  web\                các trang, nhúng vào exe:
+    admin.js          trang quản trị (module ES): gắn từng trang vào route
+    admin-core.js     khung chung: h(), gọi API, thông báo, ngày giờ, form, điều hướng
+    admin-pickers.js  chọn ngày dd/mm/yyyy, giờ 24h
+    admin-schedule/import/rooms/appearance/themes/system.js   mỗi tab một module
+    display.*, schedule.js   trang màn hình phòng / sảnh (script thường, chạy được trên WebView cũ)
+    logo.webp, skyline.webp  logo, hình đường chân trời
 tests\SelfCheck\      kiểm tra tự động (chạy: dotnet run --project tests\SelfCheck)
 tests\schedule.test.js  kiểm tra chọn trạng thái màn hình và xoay phòng sảnh (node tests\schedule.test.js)
 tests\api-snapshot.ps1  chụp lại kết quả của mọi API để so sánh trước/sau khi sửa code (xem đầu file)

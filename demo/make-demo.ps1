@@ -15,7 +15,8 @@ foreach ($f in Get-ChildItem $web) {
     $t = $t.Replace('/assets/', '').Replace('"/logo?v=', '"logo.webp?v=').Replace('`/logo?v=', '`logo.webp?v=').Replace('url("/logo?v=', 'url("logo.webp?v=')
     if ($f.Name -in 'display.html', 'admin.html') {
       $page = $f.BaseName
-      $t = $t.Replace("<script src=""$page.js""></script>", "<script src=""mock.js""></script>`n<script src=""$page.js""></script>")
+      # mock.js must run first: it replaces fetch before the page's scripts (classic or module) load data.
+      $t = [regex]::Replace($t, "<script (type=""module"" )?src=""$page.js""></script>", { param($m) "<script src=""mock.js""></script>`n" + $m.Value })
     }
     [IO.File]::WriteAllText($dst, $t, $utf8)
   } else {
