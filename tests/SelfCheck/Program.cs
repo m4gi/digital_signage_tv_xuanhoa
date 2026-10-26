@@ -63,7 +63,7 @@ var good = Sheet(
     ["Chiều", "", "", "", "", "", ""],
     ["Chủ nhật, 25/10/2026"],
     ["Sáng", "", "", "", "", "", ""]);
-var w = WeekExcel.Read(good, morning, afternoon);
+var w = WeekExcelReader.Read(good, morning, afternoon);
 Check(w.Errors.Count == 0, "sample layout imports without errors: " + string.Join(" | ", w.Errors));
 Check(w.From == new DateOnly(2026, 10, 19) && w.To == new DateOnly(2026, 10, 25), "week range read from the title");
 Check(w.Meetings.Count == 5, "5 meetings, empty Sáng/Chiều rows skipped");
@@ -87,7 +87,7 @@ var bad = Sheet(
     ["", "09:30 - 10:30", "Họp B trùng giờ", "", "", "phòng họp tầng 1", ""], // row 8
     ["Thứ 2, 26/10/2026"],
     ["Sáng", "08:00", "Ngoài tuần", "", "", "Phòng họp tầng 2", ""]);    // row 10
-var e = WeekExcel.Read(bad, morning, afternoon);
+var e = WeekExcelReader.Read(bad, morning, afternoon);
 Check(string.Join(",", e.Errors.Select(x => x.Row)) == "5,6,8,10", "errors reported on rows 5,6,8,10: " + string.Join(" | ", e.Errors));
 Check(e.Errors[0].Message.Contains("8x") && e.Errors[1].Message.Contains("địa điểm") && e.Errors[2].Message.Contains("dòng 7"),
     "error messages name the bad value, the missing place and the clashing row");
@@ -95,15 +95,15 @@ Check(e.Errors[0].Message.Contains("8x") && e.Errors[1].Message.Contains("địa
 var noHeader = new MemoryStream();
 using (var wb = new ClosedXML.Excel.XLWorkbook()) { wb.AddWorksheet("x").Cell(1, 1).Value = "abc"; wb.SaveAs(noHeader); }
 noHeader.Position = 0;
-Check(WeekExcel.Read(noHeader, morning, afternoon).Errors is [{ Row: 0 }], "file without the header row is refused");
+Check(WeekExcelReader.Read(noHeader, morning, afternoon).Errors is [{ Row: 0 }], "file without the header row is refused");
 
-var round = WeekExcel.Read(new MemoryStream(WeekExcel.Write(w.From, w.Meetings, new Org("ỦY BAN NHÂN DÂN", "PHƯỜNG XUÂN HÒA"))), morning, afternoon);
+var round = WeekExcelReader.Read(new MemoryStream(WeekExcelWriter.Write(w.From, w.Meetings, new Org("ỦY BAN NHÂN DÂN", "PHƯỜNG XUÂN HÒA"))), morning, afternoon);
 Check(round.Errors.Count == 0 && round.From == w.From && round.To == w.To, "exported file imports again without errors");
 Check(round.Meetings.Select(Key).SequenceEqual(w.Meetings.Select(Key)), "export → import keeps every meeting field");
 
-var tpl = WeekExcel.Read(new MemoryStream(WeekExcel.Template(w.From, new Org("A", "B"))), morning, afternoon);
+var tpl = WeekExcelReader.Read(new MemoryStream(WeekExcelWriter.Template(w.From, new Org("A", "B"))), morning, afternoon);
 Check(tpl.Errors.Count == 0 && tpl.Meetings.Count == 3, "template file imports cleanly");
-var hidden = WeekExcel.Read(new MemoryStream(WeekExcel.Write(w.From, [m4 with { ShowNote = false }], new Org("A", "B"))), morning, afternoon).Meetings[0];
+var hidden = WeekExcelReader.Read(new MemoryStream(WeekExcelWriter.Write(w.From, [m4 with { ShowNote = false }], new Org("A", "B"))), morning, afternoon).Meetings[0];
 Check(hidden.Note == "" && hidden.Status == Postponed, "a hidden note is not exported; Hoãn still is");
 
 // ---------- Themes ----------
@@ -152,7 +152,7 @@ try
 
     var log = Path.Combine(tmp, "audit.log");
     File.AppendAllText(log, $"{{\"at\":\"{cutoff.AddDays(-2):yyyy-MM-dd}T10:00:00\",\"ip\":\"x\",\"action\":\"old\"}}\nnot json\n");
-    var removedLines = reloaded.PruneAudit(cutoff);
+    var removedLines = reloaded.Audit.Prune(cutoff);
     var lines = File.ReadAllLines(log);
     Check(removedLines == 1 && lines.Contains("not json") && lines.Any(l => l.Contains("\"cleanup\"")),
         "audit.log drops lines before the cutoff, keeps unreadable lines and the cleanup entry");

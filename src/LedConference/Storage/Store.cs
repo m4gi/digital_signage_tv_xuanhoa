@@ -23,6 +23,7 @@ public sealed class Store
     public Store(string dir)
     {
         this.dir = Directory.CreateDirectory(dir).FullName;
+        Audit = new AuditLog(PathOf("audit.log"));
         var (themes, themeError) = ReadThemes();
         ThemeError = themeError;
         current = new Data
@@ -39,6 +40,8 @@ public sealed class Store
     }
 
     public string Dir => dir;
+
+    public AuditLog Audit { get; }
 
     // Set when themes.json was hand-edited into an invalid state; the last good themes stay in use.
     public string? ThemeError { get; private set; }
@@ -72,9 +75,7 @@ public sealed class Store
                 ThemeError = null;
             }
             current = next;
-
-            var entry = new { at = DateTime.Now.ToString("s"), ip, action, target, changes };
-            File.AppendAllText(PathOf("audit.log"), JsonSerializer.Serialize(entry, Json.Compact) + "\n");
+            Audit.Append(ip, action, target, changes);
         }
     }
 
@@ -113,48 +114,6 @@ public sealed class Store
             }
             return new { before = cutoff, meetings, imports = old.Count };
         });
-    }
-
-    // Keeps only audit lines from `cutoff` on. Lines that cannot be read are kept rather than lost.
-    public int PruneAudit(DateOnly cutoff)
-    {
-        lock (gate)
-        {
-            var path = PathOf("audit.log");
-            if (!File.Exists(path)) return 0;
-            var lines = File.ReadAllLines(path);
-            var keep = lines.Where(l => !(AuditDate(l) is { } at && at < cutoff)).ToList();
-            if (keep.Count == lines.Length) return 0;
-            File.WriteAllLines(path + ".tmp", keep);
-            File.Move(path + ".tmp", path, overwrite: true);
-            return lines.Length - keep.Count;
-        }
-    }
-
-    // Reads the whole log; old lines are pruned by PruneAudit, so it stays small.
-    public List<JsonElement> ReadAudit(int limit)
-    {
-        lock (gate)
-        {
-            var path = PathOf("audit.log");
-            if (!File.Exists(path)) return [];
-            return File.ReadLines(path).TakeLast(limit).Reverse()
-                .Select(l => JsonDocument.Parse(l).RootElement.Clone()).ToList();
-        }
-    }
-
-    static DateOnly? AuditDate(string line)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(line);
-            return doc.RootElement.TryGetProperty("at", out var at) && DateTime.TryParse(at.GetString(), out var t)
-                ? DateOnly.FromDateTime(t) : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     static bool Changed<T>(List<T> next, List<T> old) where T : class =>

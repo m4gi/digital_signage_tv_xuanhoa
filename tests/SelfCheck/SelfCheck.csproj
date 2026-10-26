@@ -8,11 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Only the pure logic is checked here; it compiles without the web host. -->
-    <Compile Include="..\..\src\LedConference\Models.cs" />
-    <Compile Include="..\..\src\LedConference\Screen.cs" />
-    <Compile Include="..\..\src\LedConference\WeekExcel.cs" />
-    <Compile Include="..\..\src\LedConference\Store.cs" />
+    <!-- Only the pure logic is checked here (domain, storage, Excel); it compiles without the web host. -->
+    <Compile Include="..\..\src\LedConference\Domain\*.cs" />
+    <Compile Include="..\..\src\LedConference\Storage\*.cs" />
+    <Compile Include="..\..\src\LedConference\Excel\*.cs" />
   </ItemGroup>
 
   <ItemGroup>

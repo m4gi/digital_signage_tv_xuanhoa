@@ -207,13 +207,18 @@ Chuột phải `uninstall.bat` → Run as administrator. Dịch vụ và luật 
 
 ```
 src\LedConference\   máy chủ (.NET 10, ASP.NET Core Minimal API)
-  Program.cs          cổng, phân quyền theo IP, toàn bộ API
-  Store.cs            lưu JSON an toàn, sao lưu, nhật ký, nạp lại themes.json
-  Screen.cs           tính cuộc họp đang diễn ra / tiếp theo, khớp địa điểm
-  WeekExcel.cs        đọc/ghi Excel lịch tuần, file mẫu
-  Models.cs           dữ liệu, mẫu giao diện (theo bộ nhận diện của phường)
+  Program.cs          điểm ghép: đọc cấu hình, đăng ký dịch vụ (DI), middleware, gọi từng nhóm API
+  Domain\             mô hình dữ liệu, mẫu giao diện, luật kiểm tra dữ liệu nhập, chọn cuộc họp đang/tiếp theo
+  Storage\            Store (lưu JSON an toàn, sao lưu), AuditLog (nhật ký), cấu hình JSON
+  Excel\              WeekExcelReader (đọc file lịch tuần), WeekExcelWriter (xuất, file mẫu)
+  Http\               ServerConfig (cổng, IP quản trị), PortGate (tách cổng, chặn IP/Origin, header bảo mật),
+                      EmbeddedAssets (file nhúng trong exe), Api (trả lỗi, IP, mã, diff)
+  Services\           ScreenStatus (màn hình đang chạy), LogoFiles, ThemeWatcher, RetentionCleanup (chạy nền)
+  Endpoints\          mỗi nhóm API một file (Screen, Room, Meeting, Excel, Place, Settings, Theme, Logo, Page) + Views
   web\                trang màn hình, trang quản trị, logo, hình đường chân trời (nhúng vào exe)
 tests\SelfCheck\      kiểm tra tự động (chạy: dotnet run --project tests\SelfCheck)
+tests\schedule.test.js  kiểm tra chọn trạng thái màn hình và xoay phòng sảnh (node tests\schedule.test.js)
+tests\api-snapshot.ps1  chụp lại kết quả của mọi API để so sánh trước/sau khi sửa code (xem đầu file)
 deploy\               install.bat (+ install.ps1), uninstall.bat
 docs\screen-api.md    API cho ứng dụng màn hình
 demo\                 bản mẫu HTML chạy bằng dữ liệu giả (mock.js); chạy demo\make-demo.ps1 để tạo demo\site\
