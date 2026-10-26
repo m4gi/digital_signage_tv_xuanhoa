@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var KEY = 'ledConference.demo.v2'; // bumped when the sample data shape changes
+  var KEY = 'ledConference.demo.v3'; // bumped when the sample data shape changes
   var DEFAULT_DISPLAY = {
     theme: 'official', orientation: 'auto', effect: 'fadeUp', clock: true, footer: true,
     reduceMotion: false, hideCursor: true, footerNote: '', emptyDay: 'nextMeeting', skyline: 'normal',
@@ -64,7 +64,10 @@
     add(today, s0 + 150, s0 + 210, 'Họp triển khai kế hoạch chuyển đổi số', 'Phó Chủ tịch UBND phường', 'Phòng họp số 2',
       { source: 'manual', importId: null, contact: 'Đ/c Minh – phòng Văn hóa – Xã hội', showContact: true });
     add(today, s0 + 240, s0 + 300, 'Họp chuẩn bị hội nghị cuối năm', 'Chánh Văn phòng', 'Phòng họp tầng 2', { status: 'postponed' });
-    add(today, s0 + 60, s0 + 120, 'Rà soát hồ sơ đất đai tồn đọng', 'Trưởng phòng Kinh tế', 'PH tầng 1', { endEstimated: true });
+    // P101 always shows the minutes after a meeting: one ended a minute ago, the next starts soon (see relative()).
+    add(today, 0, 0, 'Rà soát hồ sơ đất đai tồn đọng', 'Trưởng phòng Kinh tế', 'PH tầng 1', { rel: [-61, -1] });
+    add(today, 0, 0, 'Họp giải quyết đơn thư kiến nghị của công dân', 'Phó Chủ tịch UBND phường', 'PH tầng 1',
+      { rel: [25, 85], note: 'Mời đại diện khu phố 3 cùng dự', contact: 'Đ/c Hùng – Thanh tra phường', showContact: true });
     add(today, s0, s0 + 120,
       'Hội nghị sơ kết công tác 9 tháng đầu năm và triển khai phương hướng, nhiệm vụ trọng tâm 3 tháng cuối năm của Ủy ban nhân dân phường Xuân Hòa',
       'Chủ tịch Ủy ban nhân dân phường', 'Phòng tiếp công dân',
@@ -107,7 +110,15 @@
     var st = memory;
     try { st = JSON.parse(localStorage.getItem(KEY)) || st; } catch (e) { /* storage blocked: keep in memory */ }
     if (!st || st.seededFor !== iso(new Date())) { st = seed(); save(st); }
+    relative(st);
     return st;
+  }
+  // Meetings seeded with `rel` keep their times relative to now, so the "ĐÃ KẾT THÚC" card shows whenever the demo is opened.
+  function relative(st) {
+    var now = nowMinutes();
+    st.meetings.forEach(function (m) {
+      if (m.rel) { m.date = iso(new Date()); m.start = hm(now + m.rel[0]); m.end = hm(now + m.rel[1]); }
+    });
   }
   function save(st) {
     memory = st;
@@ -291,6 +302,7 @@
         if (Object.keys(c.errors).length) return invalid(c.errors);
         var old = method === 'PUT' && st.meetings.find(function (x) { return x.id === parts[1]; });
         if (method === 'PUT' && !old) return problem(404, 'Không tìm thấy cuộc họp', parts[1]);
+        if (old) delete old.rel; // edited by hand: keep the times typed in
         m = Object.assign({}, old || { id: id('m_'), importId: null }, {
           date: b.date, start: b.start, end: b.end, endEstimated: false, title: b.title.trim(), chair: (b.chair || '').trim(),
           participants: (b.participants || '').trim(), note: (b.note || '').trim(), showNote: b.showNote !== false, contact: (b.contact || '').trim(), showContact: !!b.showContact, place: c.place, status: b.status || 'normal',

@@ -74,7 +74,7 @@ figcaption strong { color: var(--fg); }
       <label id="roomPick">Phòng
         <select id="room">
           <option value="P201">P201 – Phòng họp tầng 2 (mẫu Chính thức)</option>
-          <option value="P101">P101 – Phòng họp tầng 1 (mẫu Hiện đại)</option>
+          <option value="P101">P101 – Phòng họp tầng 1 (mẫu Hiện đại, vừa họp xong)</option>
           <option value="PTD">PTD – Phòng tiếp dân (mẫu Trang trọng, tên dài)</option>
         </select>
       </label>
@@ -97,14 +97,16 @@ figcaption strong { color: var(--fg); }
     </div>
     <h2>Standee dọc (1080×1920)</h2>
     <div class="shots tall">
-      <figure><img src="screens/app-chon-phong.jpg" alt="Bước chọn phòng" width="540" height="960" loading="lazy"><figcaption><strong>② Chọn phòng</strong> – thẻ lớn, chọn bằng tay hoặc remote.</figcaption></figure>
+      <figure><img src="screens/app-chon-phong.jpg" alt="Bước chọn phòng" width="540" height="960" loading="lazy"><figcaption><strong>② Chọn phòng</strong> – thẻ lớn, chọn bằng tay hoặc remote; “Tất cả phòng” cho màn hình đặt ở sảnh.</figcaption></figure>
+      <figure><img src="screens/app-sanh.jpg" alt="Màn hình sảnh chiếu lần lượt lịch các phòng" width="540" height="960" loading="lazy"><figcaption><strong>Màn hình sảnh</strong> – chiếu lần lượt từng phòng còn lịch hôm nay.</figcaption></figure>
       <figure><img src="screens/app-man-cho.jpg" alt="Màn chờ có logo phường" width="540" height="960" loading="lazy"><figcaption><strong>Màn chờ</strong> – hiện trong lúc tải lịch.</figcaption></figure>
       <figure><img src="screens/app-chieu-doc.jpg" alt="Màn hình chiếu lịch họp dọc" width="540" height="960" loading="lazy"><figcaption><strong>Chiếu lịch</strong> – bố cục dọc tự đổi theo màn hình.</figcaption></figure>
     </div>
   </section>
 
   <ul class="notes">
-    <li>Màn hình ngang/dọc là đúng trang màn hình chạy trên standee (app Android hoặc Fully Kiosk); trang quản trị là đúng trang mở ở <code>http://&lt;IP máy chủ&gt;:8081/</code>, gồm 5 tab: Lịch họp, Nhập Excel, Phòng &amp; màn hình, Giao diện, Hệ thống.</li>
+    <li>Màn hình ngang/dọc là đúng trang màn hình chạy trên standee (app Android hoặc Fully Kiosk); trang quản trị là đúng trang mở ở <code>http://&lt;IP máy chủ&gt;:&lt;cổng quản trị&gt;/</code>, gồm 5 tab: Lịch họp, Nhập Excel, Phòng &amp; màn hình, Giao diện, Hệ thống.</li>
+    <li>Phòng P101 luôn ở lúc vừa họp xong: thẻ lớn xoay giữa “ĐÃ KẾT THÚC” và cuộc họp tiếp theo mỗi 10 giây. Màn hình sảnh chiếu lần lượt các phòng còn lịch hôm nay.</li>
     <li>Trạng thái “đang chạy / mất kết nối” ở tab Phòng &amp; màn hình trong bản mẫu là dữ liệu giả.</li>
     <li>Bản mẫu không đọc được file Excel và không tải file về; trên máy chủ thật các nút đó hoạt động bình thường.</li>
     <li>Dữ liệu mẫu chỉ lưu trong trình duyệt của bạn và tự tạo lại mỗi ngày theo giờ hiện tại.</li>
@@ -139,7 +141,7 @@ figcaption strong { color: var(--fg); }
   room.addEventListener('change', function () { show(view, true); });
   document.getElementById('reload').addEventListener('click', function () { show(view, true); });
   document.getElementById('reset').addEventListener('click', function () {
-    try { localStorage.removeItem('ledConference.demo.v2'); } catch (e) { /* in-memory data resets on reload */ }
+    try { localStorage.removeItem('ledConference.demo.v3'); } catch (e) { /* in-memory data resets on reload */ }
     show(view, true);
   });
 
