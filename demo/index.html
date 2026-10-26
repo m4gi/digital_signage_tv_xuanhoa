@@ -66,6 +66,7 @@ figcaption strong { color: var(--fg); }
     <div class="tabs" role="tablist" aria-label="Chọn giao diện">
       <button role="tab" id="tab-ngang" aria-controls="frame" data-view="ngang">Màn hình ngang</button>
       <button role="tab" id="tab-doc" aria-controls="frame" data-view="doc">Màn hình dọc</button>
+      <button role="tab" id="tab-sanh" aria-controls="frame" data-view="sanh">Màn hình sảnh</button>
       <button role="tab" id="tab-quantri" aria-controls="frame" data-view="quantri">Trang quản trị</button>
       <button role="tab" id="tab-app" aria-controls="gallery" data-view="app">App Android</button>
     </div>
@@ -124,13 +125,13 @@ figcaption strong { color: var(--fg); }
     tabs.forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.view === name)); });
     panel.setAttribute('aria-labelledby', 'tab-' + name);
     main.className = 'wrap ' + (name === 'app' ? 'app' : name === 'quantri' ? 'admin' : name === 'doc' ? 'portrait' : 'landscape');
-    document.getElementById('roomPick').hidden = name === 'quantri' || name === 'app';
+    document.getElementById('roomPick').hidden = name === 'quantri' || name === 'app' || name === 'sanh';
     document.getElementById('gallery').hidden = name !== 'app';
     document.querySelector('.tools').hidden = name === 'app';
     if (name === 'app') { frame.removeAttribute('src'); try { history.replaceState(null, '', '#app'); } catch (e) { /* not essential */ } return; }
     if (!keepRoom && defaults[name]) room.value = defaults[name];
     frame.title = name === 'quantri' ? 'Trang quản trị' : 'Màn hình phòng họp';
-    frame.src = name === 'quantri' ? 'admin.html#/lich' : 'display.html?room=' + room.value + '&v=' + Date.now();
+    frame.src = name === 'quantri' ? 'admin.html#/lich' : 'display.html?room=' + (name === 'sanh' ? '*' : room.value) + '&v=' + Date.now();
     try { history.replaceState(null, '', '#' + name); } catch (e) { /* not essential */ }
   }
 
@@ -143,6 +144,6 @@ figcaption strong { color: var(--fg); }
   });
 
   var start = location.hash.replace('#', '');
-  show(defaults[start] || start === 'quantri' || start === 'app' ? start : 'ngang');
+  show(defaults[start] || start === 'quantri' || start === 'app' || start === 'sanh' ? start : 'ngang');
 })();
 </script>

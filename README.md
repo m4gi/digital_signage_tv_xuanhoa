@@ -67,6 +67,7 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
    Không thấy thì nhập IP máy chủ kèm cổng màn hình, ví dụ `192.168.1.10:8080`, bấm **Kết nối**.
 3. Chọn phòng → màn hình bắt đầu chiếu, luôn sáng, toàn màn hình. Lần sau mở máy là chiếu ngay.
 4. Đổi phòng/máy chủ: bấm **Back** (remote) hoặc **giữ tay lâu** trên màn hình.
+   Màn hình đặt ở **sảnh**: chọn thẻ **Tất cả phòng** – chiếu lần lượt lịch các phòng còn cuộc họp hôm nay.
 5. Để chắc chắn tự chạy khi bật nguồn: bấm nút Home, chọn **Lịch họp** làm ứng dụng màn hình chính → **Luôn luôn**.
 
 **Cách 2 – Fully Kiosk Browser**
@@ -74,10 +75,24 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 1. Cắm dây mạng, cắm chuột USB, thoát ứng dụng quảng cáo của hãng.
 2. Cài **Fully Kiosk Browser** (tải APK từ fully-kiosk.com, chép qua USB, bật “Cho phép cài ứng dụng không rõ nguồn”).
 3. Trong Fully Kiosk:
-   - **Start URL**: link của phòng, lấy ở tab **Phòng & màn hình** (dòng “Link Fully Kiosk”, nút **Sao chép**), dạng `http://192.168.1.10:8080/room/P201`.
+   - **Start URL**: link của phòng (màn hình sảnh: `http://192.168.1.10:8080/lobby`), lấy ở tab **Phòng & màn hình** (dòng “Link Fully Kiosk”, nút **Sao chép**), dạng `http://192.168.1.10:8080/room/P201`.
    - Bật **Launch on Boot**, **Keep Screen On**, **Fullscreen**, **Reload on network reconnect**.
 4. Tắt tự chạy của ứng dụng quảng cáo cũ. Rút điện cắm lại để kiểm tra màn hình tự lên lịch.
 5. Nên dùng bản Fully Kiosk PLUS để khoá thiết bị (Kiosk Mode có mã PIN thoát).
+
+**Toà nhà nhiều tầng / nhiều mạng: kiểm tra trước khi treo màn hình**
+
+1. Chép `kiem-tra-mang.bat` + `kiem-tra-mang.ps1` + `huong-dan-mang.md` vào USB. Cắm laptop vào switch của tầng cần kiểm tra (tắt Wi-Fi).
+2. Bấm đúp `kiem-tra-mang.bat` → nhập tên tầng, IP máy chủ, 2 cổng (Enter = mặc định). Không cần quyền quản trị.
+3. Đọc kết quả: dòng **KẾT LUẬN** cho biết standee ở tầng đó chạy được chưa; mỗi dòng `[LỖI]` kèm việc cần sửa (dòng `→`)
+   (mở đường/ACL tới máy chủ cổng màn hình, dịch vụ tắt, IP không nằm trong `adminAllow`…). Mục 3 cho biết app có tự tìm
+   thấy máy chủ không (cùng dải x.x.x.* với máy chủ) hay phải nhập tay IP trên standee.
+4. Cách cấu hình cho từng lỗi (cố định IP máy chủ, VLAN/DHCP, định tuyến và ACL trên Cisco, HPE Aruba, Huawei, MikroTik,
+   FortiGate, pfSense…, adminAllow): xem [`docs/huong-dan-mang.md`](docs/huong-dan-mang.md); mỗi dòng lỗi ghi sẵn số mục.
+5. Mỗi lần chạy lưu báo cáo vào `ket-qua\` cạnh file, và thêm 1 dòng vào `ket-qua\tong-hop.csv` (mở bằng Excel) để so sánh các tầng.
+
+Standee chỉ cần tới được máy chủ ở **cổng màn hình (TCP)**; máy văn phòng cần thêm **cổng quản trị**. Hệ thống không cần Internet.
+Máy chủ nên có **IP cố định** (giữ IP trên DHCP theo MAC hoặc đặt tay), vì standee nhớ IP này.
 
 ## 5. Sử dụng hằng ngày
 

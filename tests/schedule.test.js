@@ -58,4 +58,34 @@ v = pick(today, tomorrow, '2026-10-27', at('07:00'));
 assert.strictEqual(v.next, tomorrow, 'and is announced before it starts');
 assert.strictEqual(v.rows.length, 0, 'not listed twice');
 
+// ---------- Lobby ----------
+const { activeRooms, roomAfter, firstNextDay } = require('../src/LedConference/web/schedule.js');
+const R = (code, list, nextDay) => ({ room: { code, name: 'Phòng ' + code }, today: list, nextDay: nextDay || null });
+const rooms = [
+  R('P1', [M('p1a', '08:00', '09:00')]),                                  // done for the day by 09:05
+  R('P2', [M('p2a', '13:00', '14:00'), M('p2b', '15:00', '16:00')]),
+  R('P3', [], M('p3t', '07:30', '08:00', { date: '2026-10-27' })),         // nothing today
+  R('P4', [M('p4a', '14:00', '17:00')]),
+];
+const codes = list => list.map(x => x.room.code).join(',');
+
+assert.strictEqual(codes(activeRooms(rooms, day, at('08:30'))), 'P1,P2,P4', 'empty rooms are skipped');
+assert.strictEqual(codes(activeRooms(rooms, day, at('09:03'))), 'P1,P2,P4', 'a room stays while its meeting just ended');
+assert.strictEqual(codes(activeRooms(rooms, day, at('09:05'))), 'P2,P4', 'and drops out 5 minutes later');
+assert.strictEqual(codes(activeRooms(rooms, day, at('16:30'))), 'P4');
+assert.strictEqual(activeRooms(rooms, day, at('17:10')).length, 0, 'every room done');
+
+let act = activeRooms(rooms, day, at('08:30'));
+assert.strictEqual(roomAfter(rooms, act, null).room.code, 'P1', 'starts with the first room');
+assert.strictEqual(roomAfter(rooms, act, 'P1').room.code, 'P2');
+assert.strictEqual(roomAfter(rooms, act, 'P2').room.code, 'P4', 'skips the empty P3');
+assert.strictEqual(roomAfter(rooms, act, 'P4').room.code, 'P1', 'wraps around');
+act = activeRooms(rooms, day, at('09:05'));
+assert.strictEqual(roomAfter(rooms, act, 'P1').room.code, 'P2', 'a room that dropped out hands over to the next one');
+assert.strictEqual(roomAfter(rooms, [], 'P1'), null);
+
+const first = firstNextDay(rooms);
+assert.strictEqual(first.meeting.id, 'p3t', 'all done: the earliest next-day meeting of the building');
+assert.strictEqual(first.room.code, 'P3');
+
 console.log('schedule.test.js OK');

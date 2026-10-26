@@ -15,6 +15,9 @@
   var code = params.get('room') || decodeURIComponent(location.pathname.split('/').pop() || '');
   // Tells the server who is asking, for the admin's screen status: the APK, a browser/Fully Kiosk, or the admin preview.
   var client = params.get('preview') ? 'preview' : params.get('client') === 'apk' || server ? 'apk' : 'web';
+  // Lobby screen (/lobby, or room "*" in the app): every room with meetings left today, in turn.
+  var lobby = code === '*' || code === 'lobby';
+  var roomCode = null, shownRoom = null; // lobby: the room to show, and the one on screen
   var stage = document.getElementById('stage');
   var data = null, version = null, offset = 0, lastOk = null, statusKey = null, page = 0, pages = [];
   var view = null, viewKey = null; // Schedule.pick result and what it is made of
@@ -28,6 +31,7 @@
   function now() { return new Date(Date.now() + offset); }
   var minutes = Schedule.minutes;
   function isoDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function minutesOf(d) { return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; }
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -151,10 +155,11 @@
       return 'ended:' + e.id;
     }
 
-    box.appendChild(el('span', 'pill free', 'PHÒNG TRỐNG'));
+    // v.done: lobby with every room finished for today; v.nextRoom says where the next meeting is.
+    box.appendChild(el('span', 'pill free', v.done ? 'HẾT LỊCH HÔM NAY' : 'PHÒNG TRỐNG'));
     var next = v.next;
     if (!next) {
-      box.appendChild(el('div', 'sub', 'Không có lịch họp'));
+      box.appendChild(el('div', 'sub', v.done ? 'Không còn cuộc họp nào' : 'Không có lịch họp'));
       return 'free';
     }
     box.appendChild(el('div', 'sub', next.date !== isoDate(now()) ? 'Cuộc họp tiếp theo ' + dayLabel(next.date) + ' lúc' : 'Cuộc họp tiếp theo lúc'));
@@ -162,6 +167,7 @@
     box.appendChild(el('h2', 'title', next.title));
     if (next.chair) box.appendChild(el('div', 'sub chair', 'Chủ trì: ' + next.chair));
     if (next.contact) box.appendChild(el('div', 'sub contact', 'Liên hệ: ' + next.contact));
+    if (v.nextRoom) box.appendChild(el('div', 'sub', 'Tại: ' + v.nextRoom.name));
     return 'free:' + next.id;
   }
 
@@ -251,7 +257,8 @@
   // The bar resumes from the time already spent on this page, so a data refresh does not restart it.
   function startBar() {
     var bar = $('flipbar'), fill = bar.querySelector('div');
-    var on = pages.length > 1 && !stage.classList.contains('nomotion');
+    // In the lobby the bar also counts down to the next room when the room has a single page.
+    var on = (pages.length > 1 || (lobby && view && view.count > 1)) && !stage.classList.contains('nomotion');
     bar.style.visibility = on ? 'visible' : 'hidden';
     if (!on) return;
     var spent = Math.min(PAGE_MS, Date.now() - flipStart);
@@ -266,30 +273,62 @@
   // the rest of today and `next`; that still works, minus the "ĐÃ KẾT THÚC" card.
   function choose() {
     var n = now();
+    if (lobby) return chooseRoom(isoDate(n), minutesOf(n));
     var today = data.today || [data.current].concat(data.upcoming).filter(Boolean);
     var nextDay = data.today ? data.nextDay : data.next;
-    return Schedule.pick(today, nextDay || null, isoDate(n), n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60);
+    return Schedule.pick(today, nextDay || null, isoDate(n), minutesOf(n));
+  }
+
+  // Lobby: the room to show (it keeps its place until nextRoom() or until it has nothing left today),
+  // or, once every room is done, the building's next meeting with its room.
+  function chooseRoom(date, min) {
+    var active = Schedule.activeRooms(data.rooms, date, min), cur = null;
+    for (var i = 0; i < active.length; i++) if (active[i].room.code === roomCode) cur = active[i];
+    if (!cur) cur = Schedule.roomAfter(data.rooms, active, roomCode);
+    if (!cur) {
+      var first = Schedule.firstNextDay(data.rooms);
+      return { current: null, ended: null, next: first && first.meeting, nextRoom: first && first.room, rows: [], done: true, room: null, count: 0 };
+    }
+    var v = cur.view;
+    v.room = cur.room;
+    v.index = active.indexOf(cur);
+    v.count = active.length;
+    return v;
+  }
+
+  // After the room's last page: the next room with meetings left today.
+  function nextRoom() {
+    var n = now();
+    var next = Schedule.roomAfter(data.rooms, Schedule.activeRooms(data.rooms, isoDate(n), minutesOf(n)), roomCode);
+    roomCode = next ? next.room.code : null;
+    render(data);
   }
 
   function keyOf(v) {
     var id = function (m) { return m ? m.id : ''; };
-    return [id(v.current), id(v.ended), id(v.next), v.rows.map(id).join(',')].join('|');
+    var where = v.room ? v.room.code + ' ' + v.index + '/' + v.count : v.done ? 'done' : '';
+    return [where, id(v.current), id(v.ended), id(v.next), v.rows.map(id).join(',')].join('|');
   }
 
   // Fill every text that changes a box's height (footer, "Dự kiến còn …") before measuring anything.
   function render(d) {
-    $('room').textContent = d.room.name;
-    document.title = d.room.name + ' – Lịch họp';
-    $('note').textContent = d.display.footerNote || '';
     view = choose();
+    var name = lobby ? (view.room ? view.room.name : 'Tất cả phòng họp') : d.room.name;
+    $('room').textContent = name;
+    $('kicker').textContent = lobby && view.count > 1 ? 'LỊCH HỌP · PHÒNG ' + (view.index + 1) + '/' + view.count : 'LỊCH HỌP';
+    document.title = (lobby ? 'Màn hình sảnh' : name) + ' – Lịch họp';
+    $('note').textContent = d.display.footerNote || '';
     var k = keyOf(view);
     if (k !== viewKey) { viewKey = k; face = 0; faceStart = Date.now(); } // a meeting just ended: start on ĐÃ KẾT THÚC
+    var room = view.room ? view.room.code : null, moved = lobby && room !== shownRoom;
+    if (moved) { shownRoom = roomCode = room; page = 0; flipStart = Date.now(); }
     showStatus();
     renderRows();
+    if (moved) { animate($('room')); animate($('rows')); }
   }
 
   function showStatus() {
-    var key = renderStatus(view);
+    var key = renderStatus(view) + (shownRoom ? '@' + shownRoom : ''); // a new room animates even with the same state
     clock();
     fitStatus($('status'));
     if (key !== statusKey) {
@@ -313,10 +352,13 @@
     clock();
     if (!data) return;
     if (keyOf(choose()) !== viewKey) { render(data); return; }
-    if (view.ended && view.next && Date.now() - faceStart >= PAGE_MS) {
+    var rotating = lobby && view.count > 1;
+    // In the lobby the card turns once (ĐÃ KẾT THÚC, then the next meeting) and the room moves on after that.
+    if (view.ended && view.next && Date.now() - faceStart >= PAGE_MS && !(rotating && face === 1)) {
       face = 1 - face;
       faceStart = Date.now();
       showStatus();
+      if (rotating) { flipStart = faceStart; startBar(); }
     }
   }
 
@@ -339,7 +381,7 @@
   function load() {
     // No fetch options: old Android WebViews reject cache modes they do not know. The server answers no-store,
     // and the time stamp keeps any proxy from reusing an old answer.
-    fetch(server + '/api/screens/' + encodeURIComponent(code) + '?client=' + client + '&t=' + Date.now())
+    fetch(server + (lobby ? '/api/lobby' : '/api/screens/' + encodeURIComponent(code)) + '?client=' + client + '&t=' + Date.now())
       .then(function (r) {
         if (r.status === 404) throw 404;
         if (!r.ok) throw r.status;
@@ -369,7 +411,11 @@
   setInterval(load, POLL_MS);
   setInterval(tick, 1000);
   setInterval(function () {
+    if (Date.now() - flipStart < PAGE_MS) return;
+    // Lobby: after a room's last page (a single page stays one PAGE_MS), the next room; a room that just
+    // finished a meeting first shows both faces of its card.
+    if (lobby && view && view.count > 1 && page >= pages.length - 1 && !(view.ended && view.next && face === 0)) { nextRoom(); return; }
     if (pages.length < 2) { flipStart = Date.now(); return; }
-    if (Date.now() - flipStart >= PAGE_MS) flip();
+    flip();
   }, 250);
 })();

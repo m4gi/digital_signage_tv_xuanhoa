@@ -53,6 +53,7 @@ public class SetupActivity extends Activity {
     // Ports the installer usually suggests for the screen port; anything else is typed by hand.
     private static final int[] PORTS = {8080, 8082, 8083, 8088, 8090, 18080, 80};
     private static final int DEFAULT_PORT = 8080;
+    static final String LOBBY = "*";
 
     /** One card in the grid: a server (key = base url) or a room (key = room code). */
     private static final class Item {
@@ -225,7 +226,8 @@ public class SetupActivity extends Activity {
         boolean on = configured();
         currentCard.setVisibility(on ? View.VISIBLE : View.GONE);
         if (on) {
-            current.setText(prefs.getString("room", "") + " – " + prefs.getString("roomName", ""));
+            String room = prefs.getString("room", "");
+            current.setText(LOBBY.equals(room) ? "Tất cả phòng (màn hình sảnh)" : room + " – " + prefs.getString("roomName", ""));
             currentServer.setText("Máy chủ " + host(prefs.getString("server", "")));
         }
     }
@@ -428,6 +430,15 @@ public class SetupActivity extends Activity {
         rescan.setVisibility(View.GONE);
         items.clear();
         JSONArray rooms = j.optJSONArray("rooms");
+        // Lobby screen: room "*" makes the page show every room in turn (/api/lobby).
+        if (rooms != null && rooms.length() > 0) {
+            Item lobby = new Item();
+            lobby.key = LOBBY;
+            lobby.badge = "SẢNH";
+            lobby.title = "Tất cả phòng";
+            lobby.sub = "Màn hình đặt ở sảnh, chiếu lần lượt lịch các phòng";
+            items.add(lobby);
+        }
         for (int i = 0; rooms != null && i < rooms.length(); i++) {
             JSONObject r = rooms.optJSONObject(i);
             Item it = new Item();

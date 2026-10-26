@@ -511,8 +511,8 @@ async function pageImport(app) {
 // ---------- Phòng & màn hình ----------
 
 async function pageRooms(app) {
-  const [rooms, themes] = await Promise.all([api('GET', '/api/rooms'), api('GET', '/api/themes')]);
-  app.replaceChildren(h('div', { class: 'stack' }, roomsCard(rooms, themes.items)));
+  const [rooms, themes, lobby] = await Promise.all([api('GET', '/api/rooms'), api('GET', '/api/themes'), api('GET', '/api/lobbyinfo')]);
+  app.replaceChildren(h('div', { class: 'stack' }, lobbyCard(lobby), roomsCard(rooms, themes.items)));
   // Keep the online/offline dots current while the page is open.
   S.timer = setTimeout(() => { if (location.hash === '#/phong') route(); }, 30000);
 }
@@ -603,6 +603,23 @@ function unassignedCard(unassigned, rooms, settings) {
 
 async function act(promise, message) {
   try { await promise; toast(message); route(); } catch (e) { fail(e); }
+}
+
+// The lobby screen shows every room with meetings left today, one after another, in the global look.
+function lobbyCard(lobby) {
+  const st = screenStatus(lobby);
+  return h('section', { class: 'card room-card lobby-card' },
+    h('div', { class: 'row between' },
+      h('div', { class: 'row' }, h('span', { class: 'chip room' }, 'SẢNH'), h('strong', { class: 'room-name' }, 'Màn hình sảnh – tất cả phòng')),
+      st.chip),
+    h('p', { class: 'card-hint' },
+      'Chiếu lần lượt các phòng còn cuộc họp hôm nay (hết các trang của phòng này thì sang phòng khác); phòng không còn lịch được bỏ qua. ',
+      'Dùng giao diện chung ở tab Giao diện. Trong app, chọn “Tất cả phòng”.'),
+    st.lines.length > 0 && h('div', { class: 'screens' }, st.lines),
+    h('div', { class: 'copies' },
+      copyRow('Địa chỉ cho app', new URL(lobby.screenUrl).host),
+      copyRow('Link Fully Kiosk', lobby.screenUrl)),
+    h('div', { class: 'row' }, h('a', { class: 'btn small', href: lobby.screenUrl, target: '_blank', rel: 'noopener' }, 'Mở màn hình sảnh')));
 }
 
 function roomsCard(rooms, themes) {

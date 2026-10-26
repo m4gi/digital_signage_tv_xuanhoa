@@ -148,6 +148,28 @@
   }
   function byTime(a, b) { return (a.date + a.start).localeCompare(b.date + b.start); }
 
+  // Same shape as /api/lobby: every room's day in the global look.
+  function lobby(st) {
+    var s = effective(st, { display: {} });
+    var theme = st.themes.find(function (t) { return t.id === s.theme; }) || st.themes[0];
+    var now = new Date(), today = iso(now);
+    var org = { line1: st.settings.org.line1, line2: st.settings.org.line2, logoUrl: 'logo.webp?v=' + st.settings.logoVersion, customLogo: false };
+    var display = Object.assign({}, s, { theme: theme });
+    return ok({
+      apiVersion: 1, lobby: true, org: org,
+      serverTime: today + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()),
+      configVersion: hash(JSON.stringify([display, org])), display: display,
+      rooms: st.rooms.map(function (room) {
+        var list = st.meetings.filter(function (m) { return m.status !== 'cancelled' && matches(room, m.place); }).sort(byTime);
+        return {
+          room: { code: room.code, name: room.name },
+          today: list.filter(function (m) { return m.date === today; }).map(pub),
+          nextDay: s.emptyDay === 'nextMeeting' ? pub(list.find(function (m) { return m.date > today; }) || null) : null,
+        };
+      }),
+    });
+  }
+
   function screen(st, code) {
     var room = st.rooms.find(function (r) { return r.code === code.toUpperCase(); });
     if (!room) {
@@ -224,6 +246,9 @@
     var route = method + ' ' + parts[0] + (parts.length > 1 ? '/:' : '') + (parts.length > 2 ? '/' + parts[2] : '');
     switch (route) {
       case 'GET screens/:': return screen(st, parts[1]);
+      case 'GET lobby': return lobby(st);
+      case 'GET lobbyinfo':
+        return ok({ screenUrl: new URL('display.html?room=*', location.href).href, screens: [{ ip: '192.168.1.50', lastSeen: today + 'T' + hm(nowMinutes()) + ':00', client: 'apk', online: true }] });
 
       case 'GET rooms':
         return ok(st.rooms.map(function (x) {

@@ -23,17 +23,25 @@ where node >nul 2>&1 && (
 echo.
 echo == Dong goi LedConference.exe
 rem Publish also emits IIS-only files (web.config, aspnetcorev2_inprocess.dll); the exe runs on Kestrel, so only it is kept.
-if exist dist rmdir /s /q dist
+rem dist\data\ is the live data of a service installed from dist\ (meetings, settings, logs): never delete it.
+if exist dist for %%f in (dist\*) do del /q "%%f"
 if exist obj\publish rmdir /s /q obj\publish
 dotnet publish src\LedConference -c Release -r win-x64 --self-contained true ^
   -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o obj\publish
 if errorlevel 1 exit /b 1
 
-mkdir dist
+if not exist dist mkdir dist
 copy /y obj\publish\LedConference.exe dist\ >nul
+if errorlevel 1 (
+  echo Khong ghi duoc dist\LedConference.exe: dung dich vu LedConference truoc ^(sc stop LedConference^).
+  exit /b 1
+)
 copy /y deploy\install.bat dist\ >nul
 copy /y deploy\install.ps1 dist\ >nul
 copy /y deploy\uninstall.bat dist\ >nul
+copy /y deploy\kiem-tra-mang.bat dist\ >nul
+copy /y deploy\kiem-tra-mang.ps1 dist\ >nul
+copy /y docs\huong-dan-mang.md dist\ >nul
 copy /y README.md dist\ >nul
 copy /y docs\screen-api.md dist\ >nul
 rem APK man hinh: build truoc bang android\gradlew.bat assembleDebug (can Android Studio).

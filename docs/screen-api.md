@@ -97,6 +97,20 @@ báo “đang chạy / mất kết nối” (quá 3 phút không lấy lịch). 
   và khi mất kết nối; 5 phút sau khi cuộc họp kết thúc, thẻ lớn xoay “ĐÃ KẾT THÚC” với cuộc họp tiếp theo mỗi 10 giây.
   `current`/`upcoming`/`next` giữ nguyên cho app cũ.
 
+## `GET /api/lobby` (màn hình sảnh)
+
+Trang `/lobby` (Fully Kiosk) hoặc phòng `*` trong app (`display.html?room=*`) gọi API này mỗi 60 giây.
+Cùng các trường `org`, `serverTime`, `configVersion`, `display` như trên (luôn là **cấu hình chung**, không theo phòng), cộng:
+
+```json
+{ "lobby": true,
+  "rooms": [ { "room": { "code": "P201", "name": "Phòng họp tầng 2" }, "today": [ … ], "nextDay": null } ] }
+```
+
+Màn hình chiếu lần lượt các phòng còn cuộc họp hôm nay (đang họp, vừa kết thúc trong 5 phút, hoặc còn lịch),
+hết các trang của phòng này thì sang phòng khác (`Schedule.activeRooms` / `roomAfter` trong `web/schedule.js`).
+Khi mọi phòng đã hết lịch: hiện `HẾT LỊCH HÔM NAY` kèm cuộc họp gần nhất ngày sau và phòng của nó.
+
 ## `GET /logo?v=N`
 
 Logo phường (WebP, PNG hoặc JPG). Được cache 1 ngày; `v` đổi khi logo đổi.

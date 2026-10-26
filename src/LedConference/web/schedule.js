@@ -47,7 +47,39 @@ var Schedule = (function () {
     };
   }
 
-  return { pick: pick, minutes: minutes, ENDED_MIN: ENDED_MIN };
+  // Lobby screen: the rooms worth showing now, in room order. A room counts while something runs, just
+  // ended (the ĐÃ KẾT THÚC minutes) or is still to come today; rooms with nothing left today are skipped.
+  // rooms: [{ room: { code, name }, today, nextDay }] as sent by /api/lobby.
+  function activeRooms(rooms, date, min) {
+    var out = [];
+    for (var i = 0; i < rooms.length; i++) {
+      var v = pick(rooms[i].today, rooms[i].nextDay, date, min);
+      if (v.current || v.ended || v.rows.length || (v.next && v.next.date === date)) out.push({ room: rooms[i].room, view: v });
+    }
+    return out;
+  }
+
+  // The active room to show after `code` (null = start): the next one in room order, wrapping around,
+  // so the rotation keeps its place when rooms drop in or out between polls.
+  function roomAfter(rooms, active, code) {
+    if (!active.length) return null;
+    var order = rooms.map(function (r) { return r.room.code; });
+    var from = order.indexOf(code);
+    for (var i = 0; i < active.length; i++) if (order.indexOf(active[i].room.code) > from) return active[i];
+    return active[0];
+  }
+
+  // When every room is done for today: the earliest next-day meeting of the building, with its room.
+  function firstNextDay(rooms) {
+    var best = null;
+    for (var i = 0; i < rooms.length; i++) {
+      var m = rooms[i].nextDay;
+      if (m && (!best || m.date + m.start < best.meeting.date + best.meeting.start)) best = { meeting: m, room: rooms[i].room };
+    }
+    return best;
+  }
+
+  return { pick: pick, minutes: minutes, activeRooms: activeRooms, roomAfter: roomAfter, firstNextDay: firstNextDay, ENDED_MIN: ENDED_MIN };
 })();
 
 if (typeof module !== 'undefined') module.exports = Schedule;

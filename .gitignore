@@ -27,3 +27,6 @@ android/build/
 android/app/build/
 android/.idea/
 *.iml
+
+# ket qua cua kiem-tra-mang
+ket-qua/

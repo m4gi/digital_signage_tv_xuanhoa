@@ -67,7 +67,7 @@ var cleanup = new Timer(_ =>
 app.UseStatusCodePages(); // empty error responses (e.g. malformed JSON) get a ProblemDetails body too
 
 // Screen port: read-only screen paths only. Admin port: allowlisted IPs (loopback always), same-origin writes.
-string[] screenPaths = ["/room", "/api/screens", "/assets", "/logo"];
+string[] screenPaths = ["/room", "/lobby", "/api/screens", "/api/lobby", "/assets", "/logo"];
 app.Use(async (ctx, next) =>
 {
     var headers = ctx.Response.Headers;
@@ -140,6 +140,7 @@ IResult Page(HttpContext ctx, string name)
 
 app.MapGet("/", (HttpContext ctx) => Page(ctx, "admin.html"));
 app.MapGet("/room/{code}", (string code, HttpContext ctx) => Page(ctx, "display.html"));
+app.MapGet("/lobby", (HttpContext ctx) => Page(ctx, "display.html")); // the page switches to lobby mode itself
 app.MapGet("/assets/{name}", (string name, HttpContext ctx) => Page(ctx, name));
 
 // ---------- Logo ----------
@@ -217,32 +218,13 @@ app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
     if (room is null) return Problem(404, "Không tìm thấy phòng", $"Không có phòng mã '{code}'.");
 
     var s = (room.Display ?? new()).Over(GlobalDisplay(d));
-    var theme = d.Themes.FirstOrDefault(t => t.Id == s.Theme) ?? d.Themes[0];
-    var display = new
-    {
-        s.Orientation, s.Effect, s.Clock, s.Footer, s.ReduceMotion, s.HideCursor, s.FooterNote, s.EmptyDay, s.Skyline,
-        theme,
-    };
-    var org = new
-    {
-        d.Settings.Org.Line1,
-        d.Settings.Org.Line2,
-        logoUrl = $"/logo?v={d.Settings.LogoVersion}",
-        customLogo = LogoPath() is not null,
-    };
-    var version = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new { display, org }, Json.Compact)))[..8];
-
+    var display = DisplayView(d, s);
+    var org = OrgView(d);
     var now = DateTime.Now;
-    var client = ctx.Request.Query["client"].ToString();
-    if (client != "preview") screensSeen[(room.Code, ClientIp(ctx).ToString())] = (now, client == "apk" ? "apk" : "web");
-    var roomMeetings = d.Meetings.Where(m => Screen.Matches(room, m.Place) && m.Status != MeetingStatus.Cancelled).ToList();
-    var pick = Screen.PickFor(roomMeetings, now, s.EmptyDay == "nextMeeting");
-    // The screen re-picks from these itself (meeting just ended, rotating card, offline), see web/schedule.js.
-    var todayDate = DateOnly.FromDateTime(now);
-    var dayList = roomMeetings.Where(m => m.Date == todayDate).OrderBy(m => m.Start).Select(PublicView);
-    var nextDay = s.EmptyDay == "nextMeeting"
-        ? roomMeetings.Where(m => m.Date > todayDate).OrderBy(m => m.Date).ThenBy(m => m.Start).FirstOrDefault()
-        : null;
+    Seen(ctx, room.Code, now);
+    var showNextDay = s.EmptyDay == "nextMeeting";
+    var pick = Screen.PickFor(RoomMeetings(d, room), now, showNextDay);
+    var day = DayOf(d, room, DateOnly.FromDateTime(now), showNextDay);
     var week = Screen.WeekStart(DateOnly.FromDateTime(now));
     return Results.Ok(new
     {
@@ -251,15 +233,93 @@ app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
         org,
         serverTime = now.ToString("yyyy-MM-ddTHH:mm:ss"),
         week = new { from = week, to = week.AddDays(6) },
-        configVersion = version.ToLowerInvariant(),
+        configVersion = ConfigVersion(display, org),
         display,
         current = pick.Current is null ? null : PublicView(pick.Current),
         upcoming = pick.Upcoming.Select(PublicView),
         next = pick.Next is null ? null : PublicView(pick.Next),
-        today = dayList,
-        nextDay = nextDay is null ? null : PublicView(nextDay),
+        today = day.Today,
+        nextDay = day.NextDay,
     });
 });
+
+// Lobby screen: every room in one answer, shown in turn by the same page. Uses the global look, never a room's own.
+const string LobbyKey = "*"; // screen-status key of lobby screens; room codes never contain '*'
+app.MapGet("/api/lobby", (HttpContext ctx) =>
+{
+    ctx.Response.Headers.CacheControl = "no-store";
+    var d = store.Current;
+    var s = GlobalDisplay(d);
+    var display = DisplayView(d, s);
+    var org = OrgView(d);
+    var now = DateTime.Now;
+    Seen(ctx, LobbyKey, now);
+    var date = DateOnly.FromDateTime(now);
+    return Results.Ok(new
+    {
+        apiVersion = 1,
+        lobby = true,
+        org,
+        serverTime = now.ToString("yyyy-MM-ddTHH:mm:ss"),
+        configVersion = ConfigVersion(display, org),
+        display,
+        rooms = d.Rooms.Select(r =>
+        {
+            var day = DayOf(d, r, date, s.EmptyDay == "nextMeeting");
+            return new { room = new { r.Code, r.Name }, today = day.Today, nextDay = day.NextDay };
+        }),
+    });
+});
+
+// Admin: link and status of the lobby screens (kept off the screen port: it lists device IPs).
+app.MapGet("/api/lobbyinfo", (HttpContext ctx) => new
+{
+    screenUrl = $"http://{ctx.Request.Host.Host}:{cfg.ScreenPort}/lobby",
+    screens = ScreensOf(LobbyKey, DateTime.Now),
+});
+
+object DisplayView(Data d, DisplaySettings s) => new
+{
+    s.Orientation, s.Effect, s.Clock, s.Footer, s.ReduceMotion, s.HideCursor, s.FooterNote, s.EmptyDay, s.Skyline,
+    theme = d.Themes.FirstOrDefault(t => t.Id == s.Theme) ?? d.Themes[0],
+};
+
+object OrgView(Data d) => new
+{
+    d.Settings.Org.Line1,
+    d.Settings.Org.Line2,
+    logoUrl = $"/logo?v={d.Settings.LogoVersion}",
+    customLogo = LogoPath() is not null,
+};
+
+static string ConfigVersion(object display, object org) =>
+    Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new { display, org }, Json.Compact)))[..8].ToLowerInvariant();
+
+// Remembers which device fetched which screen, for the admin's online/offline status. The admin preview does not count.
+void Seen(HttpContext ctx, string key, DateTime now)
+{
+    var client = ctx.Request.Query["client"].ToString();
+    if (client != "preview") screensSeen[(key, ClientIp(ctx).ToString())] = (now, client == "apk" ? "apk" : "web");
+}
+
+// Screens that fetched this key in the last day; they poll every 60s, so 3 minutes of silence = offline.
+object ScreensOf(string key, DateTime now) => screensSeen
+    .Where(x => x.Key.Room == key && now - x.Value.At < TimeSpan.FromDays(1))
+    .OrderByDescending(x => x.Value.At)
+    .Select(x => new { ip = x.Key.Ip, lastSeen = x.Value.At.ToString("yyyy-MM-ddTHH:mm:ss"), x.Value.Client, online = now - x.Value.At < TimeSpan.FromMinutes(3) })
+    .ToList();
+
+static List<Meeting> RoomMeetings(Data d, Room room) =>
+    d.Meetings.Where(m => Screen.Matches(room, m.Place) && m.Status != MeetingStatus.Cancelled).ToList();
+
+// The day's meetings and the first one of a later day; the screen re-picks from these itself
+// (meeting just ended, rotating card, offline, lobby), see web/schedule.js.
+static (IEnumerable<object> Today, object? NextDay) DayOf(Data d, Room room, DateOnly date, bool showNextDay)
+{
+    var list = RoomMeetings(d, room);
+    var next = showNextDay ? list.Where(m => m.Date > date).OrderBy(m => m.Date).ThenBy(m => m.Start).FirstOrDefault() : null;
+    return (list.Where(m => m.Date == date).OrderBy(m => m.Start).Select(PublicView).ToList(), next is null ? null : PublicView(next));
+}
 
 // ---------- Rooms ----------
 
@@ -276,11 +336,7 @@ app.MapGet("/api/rooms", (HttpContext ctx) =>
         r.Display,
         todayCount = d.Meetings.Count(m => m.Date == today && m.Status != MeetingStatus.Cancelled && Screen.Matches(r, m.Place)),
         screenUrl = $"http://{ctx.Request.Host.Host}:{cfg.ScreenPort}/room/{r.Code}",
-        // Screens that fetched this room's schedule in the last day; they poll every 60s, so 3 minutes of silence = offline.
-        screens = screensSeen
-            .Where(x => x.Key.Room == r.Code && now - x.Value.At < TimeSpan.FromDays(1))
-            .OrderByDescending(x => x.Value.At)
-            .Select(x => new { ip = x.Key.Ip, lastSeen = x.Value.At.ToString("yyyy-MM-ddTHH:mm:ss"), x.Value.Client, online = now - x.Value.At < TimeSpan.FromMinutes(3) }),
+        screens = ScreensOf(r.Code, now),
     });
 });
 
