@@ -121,17 +121,26 @@ app.Use(async (ctx, next) =>
 // ---------- Pages ----------
 
 var mime = new FileExtensionContentTypeProvider();
+// Pages and scripts are embedded in the exe, so they change only when the exe does. Browsers must ask again
+// every time ("no-cache") or an admin keeps running the old admin.js after an update; the ETag (one per build)
+// turns those checks into tiny 304 answers.
+var assetTag = new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{typeof(Store).Assembly.ManifestModule.ModuleVersionId:N}\"");
 IResult Asset(string name)
 {
     var stream = typeof(Store).Assembly.GetManifestResourceStream(name);
     if (stream is null) return Results.NotFound();
     mime.TryGetContentType(name, out var type);
-    return Results.Stream(stream, type ?? "application/octet-stream");
+    return Results.Stream(stream, type ?? "application/octet-stream", entityTag: assetTag);
+}
+IResult Page(HttpContext ctx, string name)
+{
+    ctx.Response.Headers.CacheControl = "no-cache";
+    return Asset(name);
 }
 
-app.MapGet("/", () => Asset("admin.html"));
-app.MapGet("/room/{code}", (string code) => Asset("display.html"));
-app.MapGet("/assets/{name}", (string name) => Asset(name));
+app.MapGet("/", (HttpContext ctx) => Page(ctx, "admin.html"));
+app.MapGet("/room/{code}", (string code, HttpContext ctx) => Page(ctx, "display.html"));
+app.MapGet("/assets/{name}", (string name, HttpContext ctx) => Page(ctx, name));
 
 // ---------- Logo ----------
 
@@ -226,7 +235,14 @@ app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
     var now = DateTime.Now;
     var client = ctx.Request.Query["client"].ToString();
     if (client != "preview") screensSeen[(room.Code, ClientIp(ctx).ToString())] = (now, client == "apk" ? "apk" : "web");
-    var pick = Screen.PickFor(d.Meetings.Where(m => Screen.Matches(room, m.Place)), now, s.EmptyDay == "nextMeeting");
+    var roomMeetings = d.Meetings.Where(m => Screen.Matches(room, m.Place) && m.Status != MeetingStatus.Cancelled).ToList();
+    var pick = Screen.PickFor(roomMeetings, now, s.EmptyDay == "nextMeeting");
+    // The screen re-picks from these itself (meeting just ended, rotating card, offline), see web/schedule.js.
+    var todayDate = DateOnly.FromDateTime(now);
+    var dayList = roomMeetings.Where(m => m.Date == todayDate).OrderBy(m => m.Start).Select(PublicView);
+    var nextDay = s.EmptyDay == "nextMeeting"
+        ? roomMeetings.Where(m => m.Date > todayDate).OrderBy(m => m.Date).ThenBy(m => m.Start).FirstOrDefault()
+        : null;
     var week = Screen.WeekStart(DateOnly.FromDateTime(now));
     return Results.Ok(new
     {
@@ -240,6 +256,8 @@ app.MapGet("/api/screens/{code}", (string code, HttpContext ctx) =>
         current = pick.Current is null ? null : PublicView(pick.Current),
         upcoming = pick.Upcoming.Select(PublicView),
         next = pick.Next is null ? null : PublicView(pick.Next),
+        today = dayList,
+        nextDay = nextDay is null ? null : PublicView(nextDay),
     });
 });
 
@@ -339,6 +357,7 @@ app.MapPost("/api/meetings", (MeetingInput input, HttpContext ctx) =>
         Chair = Clean(input.Chair),
         Participants = Clean(input.Participants),
         Note = Clean(input.Note),
+        ShowNote = input.ShowNote ?? true,
         Contact = Clean(input.Contact),
         ShowContact = input.ShowContact ?? false,
         Place = place,
@@ -367,6 +386,7 @@ app.MapPut("/api/meetings/{id}", (string id, MeetingInput input, HttpContext ctx
         Chair = Clean(input.Chair),
         Participants = Clean(input.Participants),
         Note = Clean(input.Note),
+        ShowNote = input.ShowNote ?? old.ShowNote,
         Contact = Clean(input.Contact),
         ShowContact = input.ShowContact ?? old.ShowContact,
         Place = place,
@@ -658,13 +678,16 @@ app.Run();
 
 static DisplaySettings GlobalDisplay(Data d) => d.Settings.Display.Over(DisplaySettings.Defaults);
 
-// A switched-off contact never leaves the server: the screen gets "" and shows no "Liên hệ" line.
-static object PublicView(Meeting m) =>
-    new { m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants, m.Note, contact = m.ShowContact ? m.Contact : "", m.Status };
+// A switched-off note or contact never leaves the server: the screen gets "" and shows no such line.
+static object PublicView(Meeting m) => new
+{
+    m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants,
+    note = m.ShowNote ? m.Note : "", contact = m.ShowContact ? m.Contact : "", m.Status,
+};
 
 static object AdminView(Meeting m, IEnumerable<Room> rooms) => new
 {
-    m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants, m.Note, m.Contact, m.ShowContact, m.Place,
+    m.Id, m.Date, m.Start, m.End, m.EndEstimated, m.Title, m.Chair, m.Participants, m.Note, m.ShowNote, m.Contact, m.ShowContact, m.Place,
     roomCode = Screen.RoomOf(rooms, m.Place)?.Code,
     m.Status, m.Source, m.ImportId, m.UpdatedAt, m.UpdatedBy,
 };
@@ -800,7 +823,7 @@ record RoomInput(string? Code, string? Name, List<string>? Places, DisplaySettin
 
 record MeetingInput(
     DateOnly? Date, TimeOnly? Start, TimeOnly? End, string? Title, string? Chair, string? Participants,
-    string? Note, string? Place, string? RoomCode, MeetingStatus? Status, string? Contact = null, bool? ShowContact = null);
+    string? Note, string? Place, string? RoomCode, MeetingStatus? Status, string? Contact = null, bool? ShowContact = null, bool? ShowNote = null);
 
 record SettingsInput(Org? Org, DisplaySettings? Display, Session? Morning, Session? Afternoon);
 

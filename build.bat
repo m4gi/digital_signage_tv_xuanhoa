@@ -11,6 +11,14 @@ if errorlevel 1 (
   echo SelfCheck THAT BAI - khong dong goi.
   exit /b 1
 )
+rem Logic chon trang thai cua man hinh (web\schedule.js); can Node.js, khong co thi bo qua.
+where node >nul 2>&1 && (
+  node tests\schedule.test.js
+  if errorlevel 1 (
+    echo schedule.test.js THAT BAI - khong dong goi.
+    exit /b 1
+  )
+)
 
 echo.
 echo == Dong goi LedConference.exe

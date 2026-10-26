@@ -44,6 +44,7 @@ Check(Screen.WeekStart(new(2026, 10, 19)) == new DateOnly(2026, 10, 19), "Monday
 var json = JsonSerializer.Serialize(M("a", 8, 10), Json.Compact);
 Check(json.Contains("\"start\":\"08:00\"") && json.Contains("\"status\":\"normal\""), "JSON uses HH:mm and camelCase enums");
 Check(JsonSerializer.Deserialize<Meeting>(json, Json.Compact) == M("a", 8, 10), "meeting JSON round-trips");
+Check(JsonSerializer.Deserialize<Meeting>("{\"title\":\"x\",\"note\":\"n\"}", Json.Compact)!.ShowNote, "meetings saved before the Ghi chú switch still show their note");
 
 // ---------- Weekly Excel ----------
 
@@ -102,6 +103,8 @@ Check(round.Meetings.Select(Key).SequenceEqual(w.Meetings.Select(Key)), "export 
 
 var tpl = WeekExcel.Read(new MemoryStream(WeekExcel.Template(w.From, new Org("A", "B"))), morning, afternoon);
 Check(tpl.Errors.Count == 0 && tpl.Meetings.Count == 3, "template file imports cleanly");
+var hidden = WeekExcel.Read(new MemoryStream(WeekExcel.Write(w.From, [m4 with { ShowNote = false }], new Org("A", "B"))), morning, afternoon).Meetings[0];
+Check(hidden.Note == "" && hidden.Status == Postponed, "a hidden note is not exported; Hoãn still is");
 
 // ---------- Themes ----------
 

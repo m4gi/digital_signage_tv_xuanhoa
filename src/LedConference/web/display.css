@@ -1,5 +1,6 @@
 /* Stage is a fixed 1920x1080 (or 1080x1920) canvas scaled to the window by display.js.
-   Colors come from the theme as CSS variables. Flex gap is avoided for old Android WebViews. */
+   Colors come from the theme as CSS variables. No CSS grid and no flex gap: standee WebViews can be older than
+   Chrome 57 and would stack every grid cell. Flexbox with margins only. */
 html, body { margin: 0; height: 100%; overflow: hidden; background: #05080F; }
 body { font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif; }
 body.nocursor { cursor: none; }
@@ -46,10 +47,14 @@ body.nocursor { cursor: none; }
 
 /* Everything except main keeps its size; main gets the rest and never pushes the footer off screen. */
 .top, .roomline, footer { flex-shrink: 0; }
-main { flex: 1; min-height: 0; display: grid; grid-gap: 48px; }
-.landscape main { grid-template-columns: 1.05fr 1fr; grid-template-rows: minmax(0, 1fr); }
-.portrait main { grid-template-rows: auto minmax(0, 1fr); grid-gap: 40px; }
-.portrait .status { max-height: 820px; }
+main { flex: 1; min-height: 0; display: flex; }
+/* Landscape: status card and list side by side, 1.05 : 1, both full height. */
+.landscape main > .status { flex: none; width: calc((100% - 48px) * 0.512); min-width: 0; } /* 1.05 / 2.05 */
+.landscape main > .list { flex: 1 1 0px; min-width: 0; margin-left: 48px; }
+/* Portrait: status card on top (capped), the list takes the rest. */
+.portrait main { flex-direction: column; }
+.portrait main > .status { flex: 0 0 auto; max-height: 820px; }
+.portrait main > .list { flex: 1 1 0px; min-height: 0; margin-top: 40px; }
 
 /* Line limits, applied by display.js only when shrinking the text is not enough (and always in the list). */
 .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -64,15 +69,17 @@ main { flex: 1; min-height: 0; display: grid; grid-gap: 48px; }
 .pill { display: inline-block; font-size: 30px; font-weight: 800; letter-spacing: .08em; padding: 12px 32px; border-radius: 9999px; }
 .pill.busy { background: var(--accent); color: var(--onAccent); }
 .pill.free { background: #16A34A; color: #FFFFFF; }
+.pill.ended { background: #64748B; color: #FFFFFF; }
 .range { font-size: 48px; font-weight: 800; color: var(--num); font-variant-numeric: tabular-nums; margin-left: 24px; }
 .bar { height: 12px; border-radius: 9999px; background: var(--track); overflow: hidden; }
 .bar > div { height: 100%; width: 0; background: var(--accent); transition: width 1s linear; } /* glides between the 1s ticks */
 .left { font-size: 26px; font-weight: 600; color: var(--muted); }
 .title { font-size: 56px; font-weight: 800; line-height: 1.2; margin: 0; text-wrap: balance; }
 .portrait .title { font-size: 60px; }
-.meta { display: grid; grid-template-columns: 220px minmax(0, 1fr); grid-gap: 14px 24px; font-size: 30px; line-height: 1.4; margin-bottom: 0; }
-.meta dt { font-weight: 600; color: var(--muted); }
-.meta dd { margin: 0; min-width: 0; }
+/* Label | value pairs: a 220px label and the value filling the rest, one pair per line. */
+.meta { display: flex; flex-wrap: wrap; font-size: 30px; line-height: 1.4; margin-bottom: 0; }
+.meta dt { flex: none; width: 220px; margin: 14px 24px 0 0; font-weight: 600; color: var(--muted); }
+.meta dd { flex: none; width: calc(100% - 244px); margin: 14px 0 0; min-width: 0; }
 .sub { font-size: 32px; font-weight: 600; color: var(--muted); }
 .big { font-size: 110px; font-weight: 800; line-height: 1; color: var(--num); font-variant-numeric: tabular-nums; }
 .chair { font-weight: 600; color: var(--person); }
@@ -80,8 +87,10 @@ main { flex: 1; min-height: 0; display: grid; grid-gap: 48px; }
 .landscape .card { padding: 40px; }
 .landscape .status > * + * { margin-top: 20px; }
 .landscape .title { font-size: 48px; }
-.landscape .meta { font-size: 28px; grid-gap: 10px 24px; }
+.landscape .meta { font-size: 28px; }
+.landscape .meta dt, .landscape .meta dd { margin-top: 10px; }
 .landscape .big { font-size: 96px; }
+.meta dt:first-child, .meta dt:first-child + dd { margin-top: 0; }
 
 .list { display: flex; flex-direction: column; min-height: 0; }
 .listhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; flex-shrink: 0; }
@@ -92,9 +101,11 @@ main { flex: 1; min-height: 0; display: grid; grid-gap: 48px; }
 /* Fixed-height box: display.js splits the rows into pages that fit it. */
 #rows { flex: 1; min-height: 0; overflow: hidden; }
 .row {
-  display: grid; grid-template-columns: 170px minmax(0, 1fr); grid-gap: 24px; padding: 20px 28px; margin-bottom: 14px;
+  display: flex; align-items: flex-start; padding: 20px 28px; margin-bottom: 14px;
   background: var(--card); border: 2px solid var(--border); border-radius: 28px;
 }
+.row > .t { flex: none; width: 170px; margin-right: 24px; }
+.row > div:last-child { flex: 1 1 0px; min-width: 0; }
 .row .t { font-size: 44px; font-weight: 800; line-height: 1.1; color: var(--num); font-variant-numeric: tabular-nums; }
 .row .n { font-size: 34px; font-weight: 600; line-height: 1.25;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }

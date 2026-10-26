@@ -62,7 +62,9 @@ báo “đang chạy / mất kết nối” (quá 3 phút không lấy lịch). 
     "participants": "Lãnh đạo UBND", "note": "", "contact": "Đ/c Lan – Văn phòng UBND", "status": "normal"
   },
   "upcoming": [],
-  "next": null
+  "next": null,
+  "today": [ { "id": "m_8f3k2", "date": "2026-10-22", "start": "08:00", "end": "09:30", "…": "…" } ],
+  "nextDay": null
 }
 ```
 
@@ -83,11 +85,17 @@ báo “đang chạy / mất kết nối” (quá 3 phút không lấy lịch). 
   Nền = gradient `bg1 → bg2` theo góc `bgAngle`, phủ lớp chấm tròn màu `dot` độ đậm `dotOpacity`, lưới 36px.
 - Cuộc họp: `start`/`end` dạng `HH:mm`. `endEstimated` = true khi giờ kết thúc do máy chủ tự tính.
   `status`: `normal` | `postponed` (hiện nhãn "ĐÃ HOÃN").
+  `note`: Ghi chú của cuộc họp; chuỗi rỗng khi không có hoặc đã tắt “Hiện ghi chú”.
   `contact`: dòng “Liên hệ: …” của cuộc họp (dưới Ghi chú khi đang họp, dưới cuộc họp tiếp theo khi phòng trống);
   chuỗi rỗng = không hiện (cuộc họp không có liên hệ hoặc đã tắt dòng liên hệ). Cuộc họp huỷ không bao giờ có trong kết quả.
 - `current`: cuộc họp đang diễn ra (`start` ≤ bây giờ < `end`), hoặc `null` khi phòng trống.
 - `upcoming`: phần còn lại của hôm nay chưa kết thúc, theo giờ bắt đầu.
 - `next`: cuộc họp đầu tiên của ngày sau; chỉ có khi hôm nay không còn gì và `emptyDay` = `nextMeeting`.
+- `today`: mọi cuộc họp hôm nay của phòng (kể cả đã kết thúc, trừ cuộc họp huỷ), theo giờ bắt đầu.
+  `nextDay`: cuộc họp đầu tiên của ngày sau (khi `emptyDay` = `nextMeeting`), có cả khi hôm nay còn lịch.
+  Màn hình dùng hai trường này để tự chọn trạng thái mỗi giây (`web/schedule.js`): chuyển cuộc họp đúng giờ giữa hai lần gọi
+  và khi mất kết nối; 5 phút sau khi cuộc họp kết thúc, thẻ lớn xoay “ĐÃ KẾT THÚC” với cuộc họp tiếp theo mỗi 10 giây.
+  `current`/`upcoming`/`next` giữ nguyên cho app cũ.
 
 ## `GET /logo?v=N`
 

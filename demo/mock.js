@@ -55,7 +55,7 @@
     function add(date, start, end, title, chair, place, extra) {
       meetings.push(Object.assign({
         id: id('m_'), date: date, start: hm(start), end: hm(end), endEstimated: false, title: title, chair: chair || '',
-        participants: '', note: '', contact: '', showContact: false, place: place, status: 'normal', source: 'excel', importId: 'imp_mau',
+        participants: '', note: '', showNote: true, contact: '', showContact: false, place: place, status: 'normal', source: 'excel', importId: 'imp_mau',
         updatedAt: at, updatedBy: '192.168.1.20',
       }, extra || {}));
     }
@@ -133,7 +133,7 @@
   }
   function pub(m) {
     return m && { id: m.id, date: m.date, start: m.start, end: m.end, endEstimated: m.endEstimated, title: m.title,
-      chair: m.chair, participants: m.participants, note: m.note, contact: m.showContact ? m.contact || '' : '', status: m.status };
+      chair: m.chair, participants: m.participants, note: m.showNote === false ? '' : m.note, contact: m.showContact ? m.contact || '' : '', status: m.status };
   }
   function adminView(st, m) { var r = roomOf(st, m.place); return Object.assign({}, m, { roomCode: r ? r.code : null }); }
   // Sample screen status for the admin's "Phòng & màn hình" tab: one app online, one browser gone quiet, one never seen.
@@ -170,6 +170,8 @@
       serverTime: today + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()),
       week: { from: ws, to: addDays(ws, 6) }, configVersion: hash(JSON.stringify([display, org])),
       display: display, current: pub(current), upcoming: upcoming.map(pub), next: pub(next),
+      today: todays.map(pub),
+      nextDay: s.emptyDay === 'nextMeeting' ? pub(list.find(function (m) { return m.date > today; }) || null) : null,
     });
   }
 
@@ -266,7 +268,7 @@
         if (method === 'PUT' && !old) return problem(404, 'Không tìm thấy cuộc họp', parts[1]);
         m = Object.assign({}, old || { id: id('m_'), importId: null }, {
           date: b.date, start: b.start, end: b.end, endEstimated: false, title: b.title.trim(), chair: (b.chair || '').trim(),
-          participants: (b.participants || '').trim(), note: (b.note || '').trim(), contact: (b.contact || '').trim(), showContact: !!b.showContact, place: c.place, status: b.status || 'normal',
+          participants: (b.participants || '').trim(), note: (b.note || '').trim(), showNote: b.showNote !== false, contact: (b.contact || '').trim(), showContact: !!b.showContact, place: c.place, status: b.status || 'normal',
           source: 'manual', updatedAt: new Date().toISOString().slice(0, 19), updatedBy: '192.168.1.20',
         });
         if (old) st.meetings[st.meetings.indexOf(old)] = m; else st.meetings.push(m);

@@ -20,6 +20,8 @@ public sealed record Meeting
     public string Chair { get; init; } = "";
     public string Participants { get; init; } = "";
     public string Note { get; init; } = "";
+    // Ghi chú can be hidden from the screen and kept for the admin. Meetings saved before this field show it.
+    public bool ShowNote { get; init; } = true;
     // "Liên hệ: …" line on the screen for this meeting; the text is kept when the line is switched off.
     public string Contact { get; init; } = "";
     public bool ShowContact { get; init; }

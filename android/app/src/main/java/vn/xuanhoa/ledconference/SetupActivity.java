@@ -51,7 +51,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SetupActivity extends Activity {
     static final String PREFS = "screen";
     // Ports the installer usually suggests for the screen port; anything else is typed by hand.
-    private static final int[] PORTS = {8080, 8088, 8090, 18080, 80};
+    private static final int[] PORTS = {8080, 8082, 8083, 8088, 8090, 18080, 80};
     private static final int DEFAULT_PORT = 8080;
 
     /** One card in the grid: a server (key = base url) or a room (key = room code). */

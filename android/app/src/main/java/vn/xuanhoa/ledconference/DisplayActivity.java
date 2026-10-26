@@ -17,12 +17,20 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Full-screen kiosk view. The page (display.html/css/js, images) is bundled in the APK and served from a fake
- * http origin, so it works the same as on the server; only the schedule JSON and the logo come from the server.
+ * http origin, so it works the same as on the server; only the schedule JSON and the logo come from the server,
+ * fetched by the app on the page's behalf.
  */
 public class DisplayActivity extends Activity {
     private static final String HOST = "led.local";
@@ -58,8 +66,8 @@ public class DisplayActivity extends Activity {
         root.addView(splash);
         setContentView(root);
 
-        web.loadUrl("http://" + HOST + "/display.html?server=" + Uri.encode(p.getString("server", ""))
-                + "&room=" + Uri.encode(p.getString("room", "")));
+        // Same-origin page: schedule and logo requests come back through proxy() below.
+        web.loadUrl("http://" + HOST + "/display.html?client=apk&room=" + Uri.encode(p.getString("room", "")));
     }
 
     @Override
@@ -111,12 +119,13 @@ public class DisplayActivity extends Activity {
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
             Uri u = req.getUrl();
             if (!HOST.equals(u.getHost())) return null;
+            String path = u.getPath() == null ? "" : u.getPath();
+            if (path.startsWith("/api/") || path.equals("/logo")) return proxy(u);
             String name = u.getLastPathSegment();
             try {
                 return new WebResourceResponse(mime(name), "UTF-8", getAssets().open(name));
             } catch (IOException | NullPointerException e) {
-                return new WebResourceResponse("text/plain", "UTF-8", 404, "Not Found",
-                        Collections.<String, String>emptyMap(), null);
+                return status(404, "Not Found");
             }
         }
 
@@ -127,6 +136,53 @@ public class DisplayActivity extends Activity {
             open();
             return true;
         }
+    }
+
+    /**
+     * The page asks its own origin for the schedule and logo; the app fetches them from the server here.
+     * The setup screen reaches the server the same way, so if a room could be picked, the schedule loads too:
+     * no WebView cross-origin, cleartext or local-network rules involved (newer WebViews block pages from
+     * calling LAN addresses directly).
+     */
+    private WebResourceResponse proxy(Uri u) {
+        String server = getSharedPreferences(SetupActivity.PREFS, MODE_PRIVATE).getString("server", "");
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(server + u.getEncodedPath()
+                    + (u.getEncodedQuery() == null ? "" : "?" + u.getEncodedQuery())).openConnection();
+            c.setConnectTimeout(5000);
+            c.setReadTimeout(10000);
+            int code = c.getResponseCode();
+            InputStream body = code < 400 ? c.getInputStream() : c.getErrorStream();
+            byte[] bytes = readAll(body);
+            if (code >= 300 && code < 400) return status(502, "Bad Gateway"); // WebResourceResponse refuses 3xx
+            String type = c.getContentType() == null ? "application/octet-stream" : c.getContentType().split(";")[0].trim();
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Cache-Control", "no-store");
+            return new WebResourceResponse(type, "UTF-8", code, reason(code), headers, new ByteArrayInputStream(bytes));
+        } catch (Exception e) {
+            return status(502, "Bad Gateway"); // server unreachable: the page shows "Mất kết nối" and keeps the last schedule
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
+    private static byte[] readAll(InputStream in) throws IOException {
+        if (in == null) return new byte[0];
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
+        in.close();
+        return out.toByteArray();
+    }
+
+    private static String reason(int code) {
+        return code == 200 ? "OK" : code == 404 ? "Not Found" : "Error";
+    }
+
+    private static WebResourceResponse status(int code, String reason) {
+        return new WebResourceResponse("text/plain", "UTF-8", code, reason,
+                Collections.<String, String>emptyMap(), new ByteArrayInputStream(new byte[0]));
     }
 
     private static String mime(String name) {

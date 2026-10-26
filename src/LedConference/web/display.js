@@ -1,4 +1,5 @@
 // Meeting-room screen. Polls /api/screens/{code} every 60s; clock runs on server time.
+// What to show is re-picked every second from the day's list (schedule.js), so it changes on time even offline.
 // Plain ES2017 with no optional chaining so old Android WebViews can run it.
 (function () {
   'use strict';
@@ -13,9 +14,11 @@
   var server = (params.get('server') || '').replace(/\/+$/, '');
   var code = params.get('room') || decodeURIComponent(location.pathname.split('/').pop() || '');
   // Tells the server who is asking, for the admin's screen status: the APK, a browser/Fully Kiosk, or the admin preview.
-  var client = params.get('preview') ? 'preview' : server ? 'apk' : 'web';
+  var client = params.get('preview') ? 'preview' : params.get('client') === 'apk' || server ? 'apk' : 'web';
   var stage = document.getElementById('stage');
   var data = null, version = null, offset = 0, lastOk = null, statusKey = null, page = 0, pages = [];
+  var view = null, viewKey = null; // Schedule.pick result and what it is made of
+  var face = 0, faceStart = Date.now(); // rotating big card after a meeting: 0 = ĐÃ KẾT THÚC, 1 = next meeting
   var flipStart = Date.now(); // when the current page appeared; re-renders keep it, only a flip resets it
   var orientation = 'auto', effect = 'fadeUp', started = Date.now();
 
@@ -23,7 +26,8 @@
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function hhmm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
   function now() { return new Date(Date.now() + offset); }
-  function minutes(s) { var p = s.split(':'); return +p[0] * 60 + +p[1]; }
+  var minutes = Schedule.minutes;
+  function isoDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -108,10 +112,10 @@
     dl.appendChild(el('dd', cls || null, value));
   }
 
-  function renderStatus(d) {
+  function renderStatus(v) {
     var box = $('status');
     box.textContent = '';
-    var m = d.current;
+    var m = v.current;
     if (m) {
       var head = el('div', 'statushead');
       head.appendChild(el('span', 'pill busy', 'ĐANG HỌP'));
@@ -132,16 +136,28 @@
       addMeta(dl, 'Ghi chú', m.note, 'note');
       addMeta(dl, 'Liên hệ', m.contact, 'contact'); // empty when switched off on the meeting
       if (dl.childNodes.length) box.appendChild(dl);
-      return m.id;
+      return 'busy:' + m.id;
+    }
+
+    // Just ended: alternates with the next meeting every PAGE_MS (see tick), or stays alone when nothing follows.
+    var e = v.ended;
+    if (e && (face === 0 || !v.next)) {
+      var endHead = el('div', 'statushead');
+      endHead.appendChild(el('span', 'pill ended', 'ĐÃ KẾT THÚC'));
+      endHead.appendChild(el('span', 'range', e.start + ' – ' + e.end));
+      box.appendChild(endHead);
+      box.appendChild(el('h2', 'title', e.title));
+      if (e.chair) box.appendChild(el('div', 'sub chair', 'Chủ trì: ' + e.chair));
+      return 'ended:' + e.id;
     }
 
     box.appendChild(el('span', 'pill free', 'PHÒNG TRỐNG'));
-    var next = d.upcoming.filter(function (x) { return x.status === 'normal'; })[0] || d.next;
+    var next = v.next;
     if (!next) {
       box.appendChild(el('div', 'sub', 'Không có lịch họp'));
       return 'free';
     }
-    box.appendChild(el('div', 'sub', next === d.next ? 'Cuộc họp tiếp theo ' + dayLabel(next.date) + ' lúc' : 'Cuộc họp tiếp theo lúc'));
+    box.appendChild(el('div', 'sub', next.date !== isoDate(now()) ? 'Cuộc họp tiếp theo ' + dayLabel(next.date) + ' lúc' : 'Cuộc họp tiếp theo lúc'));
     box.appendChild(el('div', 'big', next.start));
     box.appendChild(el('h2', 'title', next.title));
     if (next.chair) box.appendChild(el('div', 'sub chair', 'Chủ trì: ' + next.chair));
@@ -176,11 +192,12 @@
   // Titles are capped at 3 lines in CSS, so one row can never be taller than a page.
   function renderRows() {
     var rows = $('rows');
-    var list = data.upcoming;
+    var list = view.rows; // the meeting announced on the big card is left out
     rows.textContent = '';
     pages = [];
     if (!list.length) {
-      rows.appendChild(el('div', 'empty', 'Không còn cuộc họp nào trong hôm nay'));
+      var announced = view.next && view.next.date === isoDate(now());
+      rows.appendChild(el('div', 'empty', announced ? 'Không còn cuộc họp nào khác trong hôm nay' : 'Không còn cuộc họp nào trong hôm nay'));
       $('listTitle').textContent = 'TIẾP THEO HÔM NAY';
       $('page').textContent = '';
       startBar();
@@ -245,34 +262,69 @@
     fill.style.width = '100%';
   }
 
+  // Picks from the last data at the current server time. Servers older than the `today` field only send
+  // the rest of today and `next`; that still works, minus the "ĐÃ KẾT THÚC" card.
+  function choose() {
+    var n = now();
+    var today = data.today || [data.current].concat(data.upcoming).filter(Boolean);
+    var nextDay = data.today ? data.nextDay : data.next;
+    return Schedule.pick(today, nextDay || null, isoDate(n), n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60);
+  }
+
+  function keyOf(v) {
+    var id = function (m) { return m ? m.id : ''; };
+    return [id(v.current), id(v.ended), id(v.next), v.rows.map(id).join(',')].join('|');
+  }
+
   // Fill every text that changes a box's height (footer, "Dự kiến còn …") before measuring anything.
   function render(d) {
     $('room').textContent = d.room.name;
     document.title = d.room.name + ' – Lịch họp';
     $('note').textContent = d.display.footerNote || '';
-    var key = renderStatus(d);
-    tick();
+    view = choose();
+    var k = keyOf(view);
+    if (k !== viewKey) { viewKey = k; face = 0; faceStart = Date.now(); } // a meeting just ended: start on ĐÃ KẾT THÚC
+    showStatus();
+    renderRows();
+  }
+
+  function showStatus() {
+    var key = renderStatus(view);
+    clock();
     fitStatus($('status'));
     if (key !== statusKey) {
       animate($('status'));
       statusKey = key;
     }
-    renderRows();
   }
 
-  function setConnection(ok) {
+  // why: a short reason (HTTP code or error name) so a technician can tell "server down" from "page error".
+  function setConnection(ok, why) {
     var c = $('conn');
     c.classList.toggle('off', !ok);
     c.textContent = ok
       ? '● Cập nhật ' + hhmm(lastOk)
-      : 'Mất kết nối – đang hiện lịch lúc ' + (lastOk ? hhmm(lastOk) : '--:--');
+      : 'Mất kết nối' + (why ? ' (' + why + ')' : '') + ' – đang hiện lịch lúc ' + (lastOk ? hhmm(lastOk) : '--:--');
   }
 
+  // Every second: meetings start and end on time without waiting for the next poll, and the
+  // "ĐÃ KẾT THÚC" card trades places with the next meeting every PAGE_MS.
   function tick() {
+    clock();
+    if (!data) return;
+    if (keyOf(choose()) !== viewKey) { render(data); return; }
+    if (view.ended && view.next && Date.now() - faceStart >= PAGE_MS) {
+      face = 1 - face;
+      faceStart = Date.now();
+      showStatus();
+    }
+  }
+
+  function clock() {
     var n = now();
     $('time').textContent = hhmm(n);
     $('date').textContent = DAYS[n.getDay()] + ', ' + pad(n.getDate()) + '/' + pad(n.getMonth() + 1) + '/' + n.getFullYear();
-    var m = data && data.current, fill = $('fill');
+    var m = view && view.current, fill = $('fill');
     if (m && fill) {
       var t = n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60;
       var a = minutes(m.start), b = minutes(m.end);
@@ -285,7 +337,9 @@
   }
 
   function load() {
-    fetch(server + '/api/screens/' + encodeURIComponent(code) + '?client=' + client, { cache: 'no-store' })
+    // No fetch options: old Android WebViews reject cache modes they do not know. The server answers no-store,
+    // and the time stamp keeps any proxy from reusing an old answer.
+    fetch(server + '/api/screens/' + encodeURIComponent(code) + '?client=' + client + '&t=' + Date.now())
       .then(function (r) {
         if (r.status === 404) throw 404;
         if (!r.ok) throw r.status;
@@ -304,7 +358,7 @@
       })
       .catch(function (e) {
         if (e === 404) $('room').textContent = 'Không có phòng “' + code + '”';
-        setConnection(false);
+        setConnection(false, typeof e === 'number' ? 'mã ' + e : e && e.name);
       });
   }
 

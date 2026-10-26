@@ -266,7 +266,8 @@ public static partial class WeekExcel
                     ws.Cell(r, 4).Value = m.Chair;
                     ws.Cell(r, 5).Value = m.Participants;
                     ws.Cell(r, 6).Value = m.Place;
-                    ws.Cell(r, 7).Value = m.Status == MeetingStatus.Postponed ? (m.Note.Length > 0 ? "Hoãn. " + m.Note : "Hoãn") : m.Note;
+                    var note = m.ShowNote ? m.Note : ""; // a hidden note stays hidden after re-import
+                    ws.Cell(r, 7).Value = m.Status == MeetingStatus.Postponed ? (note.Length > 0 ? "Hoãn. " + note : "Hoãn") : note;
                     ws.Cell(r, 8).Value = m.ShowContact ? m.Contact : ""; // a hidden contact stays hidden after re-import
                     first = false;
                     r++;
