@@ -2,16 +2,11 @@ package vn.xuanhoa.ledconference;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.LinearLayout;
@@ -21,24 +16,8 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.ConnectException;
-import java.net.HttpURLConnection;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,28 +28,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Once a room is saved the app goes straight to the display on every launch, boot and HOME press.
  */
 public class SetupActivity extends Activity {
-    static final String PREFS = "screen";
-    // Ports the installer usually suggests for the screen port; anything else is typed by hand.
-    private static final int[] PORTS = {8080, 8082, 8083, 8088, 8090, 18080, 80};
     private static final int DEFAULT_PORT = 8080;
-    static final String LOBBY = "*";
-
-    /** One card in the grid: a server (key = base url) or a room (key = room code). */
-    private static final class Item {
-        String key, badge, title, sub;
-        int dot; // 0 = no dot
-    }
 
     private final ExecutorService pool = Executors.newFixedThreadPool(48);
     private final Handler ui = new Handler(Looper.getMainLooper());
-    private final List<Item> items = new ArrayList<>();
-    private SharedPreferences prefs;
+    private ScreenPrefs prefs;
+    private CardAdapter cards;
     private TextView panelTitle, status, current, currentServer;
     private TextView[] steps;
     private View currentCard, back, rescan;
     private ProgressBar progress;
     private EditText manual;
-    private BaseAdapter adapter;
     private String roomsOf; // server whose rooms are shown, null while listing servers
     private int scanId;
     private boolean launching; // display start is queued; skip the rescan in onRestart
@@ -78,9 +46,9 @@ public class SetupActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        prefs = new ScreenPrefs(this);
         buildUi();
-        if (configured()) startDisplay();
+        if (prefs.configured()) startDisplay();
         else scan();
     }
 
@@ -88,7 +56,7 @@ public class SetupActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (configured()) startDisplay();
+        if (prefs.configured()) startDisplay();
     }
 
     // Back from the display ("Đổi phòng / máy chủ").
@@ -115,10 +83,6 @@ public class SetupActivity extends Activity {
     public void onBackPressed() {
         if (roomsOf != null) scan();
         else super.onBackPressed();
-    }
-
-    private boolean configured() {
-        return prefs.contains("server") && prefs.contains("room");
     }
 
     private void startDisplay() {
@@ -153,10 +117,10 @@ public class SetupActivity extends Activity {
         manual.setOnEditorActionListener((v, a, e) -> { connectManual(); return true; });
 
         GridView grid = findViewById(R.id.grid);
-        adapter = new Cards();
-        grid.setAdapter(adapter);
+        cards = new CardAdapter(this);
+        grid.setAdapter(cards);
         grid.setOnItemClickListener((p, v, i, id) -> {
-            Item it = items.get(i);
+            CardAdapter.Item it = cards.items.get(i);
             if (roomsOf == null) connect(it.key);
             else chooseRoom(roomsOf, it);
         });
@@ -197,21 +161,13 @@ public class SetupActivity extends Activity {
         return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
-    private static GradientDrawable pill(int fill, int stroke, float radius) {
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(fill);
-        if (stroke != 0) g.setStroke(2, stroke);
-        g.setCornerRadius(radius);
-        return g;
-    }
-
     /** Step chips: done = soft blue, current = solid blue, later = outlined. */
     private void step(int n) {
         for (int i = 0; i < steps.length; i++) {
             TextView s = steps[i];
             s.setPadding(dp(14), dp(7), dp(14), dp(7));
             boolean done = i < n - 1, now = i == n - 1;
-            s.setBackground(pill(now ? getColor(R.color.brand) : done ? getColor(R.color.brand_soft) : 0,
+            s.setBackground(CardAdapter.pill(now ? getColor(R.color.brand) : done ? getColor(R.color.brand_soft) : 0,
                     now || done ? 0 : getColor(R.color.line), dp(20)));
             s.setTextColor(getColor(now ? R.color.surface : done ? R.color.brand : R.color.muted));
         }
@@ -223,49 +179,26 @@ public class SetupActivity extends Activity {
     }
 
     private void showCurrent() {
-        boolean on = configured();
+        boolean on = prefs.configured();
         currentCard.setVisibility(on ? View.VISIBLE : View.GONE);
         if (on) {
-            String room = prefs.getString("room", "");
-            current.setText(LOBBY.equals(room) ? "Tất cả phòng (màn hình sảnh)" : room + " – " + prefs.getString("roomName", ""));
-            currentServer.setText("Máy chủ " + host(prefs.getString("server", "")));
-        }
-    }
-
-    private class Cards extends BaseAdapter {
-        @Override public int getCount() { return items.size(); }
-        @Override public Object getItem(int i) { return items.get(i); }
-        @Override public long getItemId(int i) { return i; }
-
-        @Override
-        public View getView(int i, View v, ViewGroup parent) {
-            if (v == null) v = getLayoutInflater().inflate(R.layout.item_card, parent, false);
-            Item it = items.get(i);
-            View dot = v.findViewById(R.id.dot);
-            dot.setVisibility(it.dot == 0 ? View.GONE : View.VISIBLE);
-            if (it.dot != 0) dot.setBackground(pill(it.dot, 0, dp(6)));
-            TextView badge = v.findViewById(R.id.badge);
-            badge.setVisibility(it.badge == null ? View.GONE : View.VISIBLE);
-            badge.setText(it.badge);
-            badge.setBackground(pill(getColor(R.color.brand_soft), 0, dp(8)));
-            ((TextView) v.findViewById(R.id.title)).setText(it.title);
-            ((TextView) v.findViewById(R.id.sub)).setText(it.sub);
-            return v;
+            String room = prefs.room();
+            current.setText(ScreenPrefs.LOBBY.equals(room) ? "Tất cả phòng (màn hình sảnh)" : room + " – " + prefs.roomName());
+            currentServer.setText("Máy chủ " + host(prefs.server()));
         }
     }
 
     private void putServer(String base, String sub, int dot) {
-        Item it = null;
-        for (Item x : items) if (x.key.equals(base)) it = x;
+        CardAdapter.Item it = cards.find(base);
         if (it == null) {
-            it = new Item();
+            it = new CardAdapter.Item();
             it.key = base;
             it.title = host(base);
-            items.add(it);
+            cards.items.add(it);
         }
         it.sub = sub;
         it.dot = dot;
-        adapter.notifyDataSetChanged();
+        cards.notifyDataSetChanged();
     }
 
     private static String label(JSONObject j) {
@@ -279,17 +212,14 @@ public class SetupActivity extends Activity {
     private void scan() {
         final int id = ++scanId;
         roomsOf = null;
-        items.clear();
-        adapter.notifyDataSetChanged();
+        cards.items.clear();
+        cards.notifyDataSetChanged();
         step(1);
         panelTitle.setText("Máy chủ trong mạng LAN");
         back.setVisibility(View.GONE);
         rescan.setVisibility(View.VISIBLE);
 
-        // Servers that worked before are listed (and checked) first, then the device's own /24 is swept.
-        Set<String> targets = new LinkedHashSet<>(prefs.getStringSet("known", Collections.<String>emptySet()));
-        for (String h : subnetHosts())
-            for (int port : PORTS) targets.add("http://" + h + ":" + port);
+        Set<String> targets = ServerScanner.targets(prefs.known());
         if (targets.isEmpty()) {
             progress.setVisibility(View.GONE);
             setStatus("Thiết bị chưa có mạng LAN. Kiểm tra dây mạng, rồi bấm Quét lại hoặc nhập IP máy chủ.", true);
@@ -307,7 +237,7 @@ public class SetupActivity extends Activity {
                 JSONObject found = null;
                 try {
                     Uri u = Uri.parse(base);
-                    if (open(u.getHost(), u.getPort())) found = probe(base);
+                    if (ServerScanner.open(u.getHost(), u.getPort())) found = ServerScanner.probe(base);
                 } catch (Exception ignored) {
                     // not a schedule server
                 }
@@ -321,65 +251,14 @@ public class SetupActivity extends Activity {
                         setStatus("Đang tìm máy chủ… đã thử " + n + "/" + total + " địa chỉ", false);
                     } else {
                         progress.setVisibility(View.GONE);
-                        if (items.isEmpty())
+                        if (cards.items.isEmpty())
                             setStatus("Không tìm thấy máy chủ. Nhập IP máy chủ (và cổng màn hình) ở khung bên cạnh.", true);
                         else
-                            setStatus("Tìm thấy " + items.size() + " máy chủ. Chọn máy chủ để kết nối.", false);
+                            setStatus("Tìm thấy " + cards.items.size() + " máy chủ. Chọn máy chủ để kết nối.", false);
                     }
                 });
             });
         }
-    }
-
-    // Limit: only the /24 around each LAN address; bigger subnets need the IP typed in.
-    private static List<String> subnetHosts() {
-        List<String> hosts = new ArrayList<>();
-        try {
-            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (!ni.isUp() || ni.isLoopback()) continue;
-                for (InterfaceAddress ia : ni.getInterfaceAddresses()) {
-                    InetAddress a = ia.getAddress();
-                    if (!(a instanceof Inet4Address) || !a.isSiteLocalAddress()) continue;
-                    byte[] b = a.getAddress();
-                    String prefix = (b[0] & 255) + "." + (b[1] & 255) + "." + (b[2] & 255) + ".";
-                    for (int i = 1; i < 255; i++) hosts.add(prefix + i);
-                }
-            }
-        } catch (Exception ignored) {
-            // no interfaces: caller shows the "no LAN" message
-        }
-        return hosts;
-    }
-
-    private static boolean open(String host, int port) {
-        try (Socket s = new Socket()) {
-            s.connect(new InetSocketAddress(host, port), 400);
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    static JSONObject probe(String base) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/screens").openConnection();
-        c.setConnectTimeout(3000);
-        c.setReadTimeout(5000);
-        try {
-            if (c.getResponseCode() != 200) throw new IOException("máy chủ trả lỗi " + c.getResponseCode());
-            JSONObject j = new JSONObject(read(c.getInputStream()));
-            if (!"LedConference".equals(j.optString("app"))) throw new IOException("địa chỉ này không phải máy chủ lịch họp");
-            return j;
-        } finally {
-            c.disconnect();
-        }
-    }
-
-    private static String read(InputStream in) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
-        in.close();
-        return out.toString("UTF-8");
     }
 
     // ---- connect and pick a room ----
@@ -406,7 +285,7 @@ public class SetupActivity extends Activity {
         setStatus("Đang kết nối " + host(base) + "…", false);
         pool.execute(() -> {
             try {
-                JSONObject j = probe(base);
+                JSONObject j = ServerScanner.probe(base);
                 ui.post(() -> showRooms(base, j));
             } catch (Exception e) {
                 final String why = e instanceof SocketTimeoutException ? "hết thời gian chờ"
@@ -415,7 +294,7 @@ public class SetupActivity extends Activity {
                 ui.post(() -> {
                     if (roomsOf != null) return;
                     setStatus("Lỗi " + host(base) + ": " + why + ". Kiểm tra lại rồi nhập IP ở khung bên cạnh.", true);
-                    for (Item x : items) if (x.key.equals(base)) putServer(base, "Không kết nối được", getColor(R.color.error));
+                    if (cards.find(base) != null) putServer(base, "Không kết nối được", getColor(R.color.error));
                     manual.setText(host(base));
                 });
             }
@@ -428,43 +307,36 @@ public class SetupActivity extends Activity {
         panelTitle.setText("Chọn phòng");
         back.setVisibility(View.VISIBLE);
         rescan.setVisibility(View.GONE);
-        items.clear();
+        cards.items.clear();
         JSONArray rooms = j.optJSONArray("rooms");
         // Lobby screen: room "*" makes the page show every room in turn (/api/lobby).
         if (rooms != null && rooms.length() > 0) {
-            Item lobby = new Item();
-            lobby.key = LOBBY;
+            CardAdapter.Item lobby = new CardAdapter.Item();
+            lobby.key = ScreenPrefs.LOBBY;
             lobby.badge = "SẢNH";
             lobby.title = "Tất cả phòng";
             lobby.sub = "Màn hình đặt ở sảnh, chiếu lần lượt lịch các phòng";
-            items.add(lobby);
+            cards.items.add(lobby);
         }
         for (int i = 0; rooms != null && i < rooms.length(); i++) {
             JSONObject r = rooms.optJSONObject(i);
-            Item it = new Item();
+            CardAdapter.Item it = new CardAdapter.Item();
             it.key = r.optString("code");
             it.badge = it.key;
             it.title = r.optString("name");
             it.sub = "Màn hình đặt trước phòng này";
-            items.add(it);
+            cards.items.add(it);
         }
-        adapter.notifyDataSetChanged();
-        if (items.isEmpty())
+        cards.notifyDataSetChanged();
+        if (cards.items.isEmpty())
             setStatus("Đã kết nối " + host(base) + " nhưng máy chủ chưa có phòng nào. Thêm phòng ở trang quản trị rồi thử lại.", true);
         else
             setStatus("Đã kết nối " + host(base) + ". Màn hình này đặt trước phòng nào?", false);
         findViewById(R.id.grid).requestFocus();
     }
 
-    private void chooseRoom(String base, Item room) {
-        Set<String> known = new HashSet<>(prefs.getStringSet("known", Collections.<String>emptySet()));
-        known.add(base);
-        prefs.edit()
-                .putString("server", base)
-                .putString("room", room.key)
-                .putString("roomName", room.title)
-                .putStringSet("known", known)
-                .apply();
+    private void chooseRoom(String base, CardAdapter.Item room) {
+        prefs.choose(base, room.key, room.title);
         step(3);
         showCurrent();
         startDisplay();

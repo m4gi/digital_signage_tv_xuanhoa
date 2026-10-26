@@ -19,7 +19,7 @@ android {
         main.assets.srcDirs = ['../../src/LedConference/web']
     }
     androidResources {
-        ignoreAssetsPattern = '!admin.*'
+        ignoreAssetsPattern = '!admin*'
     }
 
     compileOptions {

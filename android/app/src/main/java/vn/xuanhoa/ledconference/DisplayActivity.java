@@ -2,7 +2,6 @@ package vn.xuanhoa.ledconference;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -17,23 +16,14 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Full-screen kiosk view. The page (display.html/css/js, images) is bundled in the APK and served from a fake
  * http origin, so it works the same as on the server; only the schedule JSON and the logo come from the server,
- * fetched by the app on the page's behalf.
+ * fetched by the app on the page's behalf (PageServer).
  */
 public class DisplayActivity extends Activity {
-    private static final String HOST = "led.local";
+    private ScreenPrefs prefs;
+    private PageServer pages;
     private WebView web;
     private View splash;
 
@@ -45,6 +35,8 @@ public class DisplayActivity extends Activity {
                 | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
                 | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+        prefs = new ScreenPrefs(this);
+        pages = new PageServer(getAssets(), prefs);
         open();
     }
 
@@ -58,16 +50,15 @@ public class DisplayActivity extends Activity {
         web.setWebViewClient(new Client());
         web.setOnLongClickListener(v -> { menu(); return true; });
 
-        SharedPreferences p = getSharedPreferences(SetupActivity.PREFS, MODE_PRIVATE);
         FrameLayout root = new FrameLayout(this);
         root.addView(web);
         splash = getLayoutInflater().inflate(R.layout.splash, root, false);
-        ((TextView) splash.findViewById(R.id.splashText)).setText("Đang tải lịch " + p.getString("roomName", "") + "…");
+        ((TextView) splash.findViewById(R.id.splashText)).setText("Đang tải lịch " + prefs.roomName() + "…");
         root.addView(splash);
         setContentView(root);
 
-        // Same-origin page: schedule and logo requests come back through proxy() below.
-        web.loadUrl("http://" + HOST + "/display.html?client=apk&room=" + Uri.encode(p.getString("room", "")));
+        // Same-origin page: schedule and logo requests come back through PageServer.
+        web.loadUrl("http://" + PageServer.HOST + "/display.html?client=apk&room=" + Uri.encode(prefs.room()));
     }
 
     @Override
@@ -117,16 +108,7 @@ public class DisplayActivity extends Activity {
 
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
-            Uri u = req.getUrl();
-            if (!HOST.equals(u.getHost())) return null;
-            String path = u.getPath() == null ? "" : u.getPath();
-            if (path.startsWith("/api/") || path.equals("/logo")) return proxy(u);
-            String name = u.getLastPathSegment();
-            try {
-                return new WebResourceResponse(mime(name), "UTF-8", getAssets().open(name));
-            } catch (IOException | NullPointerException e) {
-                return status(404, "Not Found");
-            }
+            return pages.handle(req.getUrl());
         }
 
         // The WebView renderer died (low memory on cheap boxes): rebuild the page instead of letting the app crash.
@@ -136,60 +118,5 @@ public class DisplayActivity extends Activity {
             open();
             return true;
         }
-    }
-
-    /**
-     * The page asks its own origin for the schedule and logo; the app fetches them from the server here.
-     * The setup screen reaches the server the same way, so if a room could be picked, the schedule loads too:
-     * no WebView cross-origin, cleartext or local-network rules involved (newer WebViews block pages from
-     * calling LAN addresses directly).
-     */
-    private WebResourceResponse proxy(Uri u) {
-        String server = getSharedPreferences(SetupActivity.PREFS, MODE_PRIVATE).getString("server", "");
-        HttpURLConnection c = null;
-        try {
-            c = (HttpURLConnection) new URL(server + u.getEncodedPath()
-                    + (u.getEncodedQuery() == null ? "" : "?" + u.getEncodedQuery())).openConnection();
-            c.setConnectTimeout(5000);
-            c.setReadTimeout(10000);
-            int code = c.getResponseCode();
-            InputStream body = code < 400 ? c.getInputStream() : c.getErrorStream();
-            byte[] bytes = readAll(body);
-            if (code >= 300 && code < 400) return status(502, "Bad Gateway"); // WebResourceResponse refuses 3xx
-            String type = c.getContentType() == null ? "application/octet-stream" : c.getContentType().split(";")[0].trim();
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Cache-Control", "no-store");
-            return new WebResourceResponse(type, "UTF-8", code, reason(code), headers, new ByteArrayInputStream(bytes));
-        } catch (Exception e) {
-            return status(502, "Bad Gateway"); // server unreachable: the page shows "Mất kết nối" and keeps the last schedule
-        } finally {
-            if (c != null) c.disconnect();
-        }
-    }
-
-    private static byte[] readAll(InputStream in) throws IOException {
-        if (in == null) return new byte[0];
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
-        in.close();
-        return out.toByteArray();
-    }
-
-    private static String reason(int code) {
-        return code == 200 ? "OK" : code == 404 ? "Not Found" : "Error";
-    }
-
-    private static WebResourceResponse status(int code, String reason) {
-        return new WebResourceResponse("text/plain", "UTF-8", code, reason,
-                Collections.<String, String>emptyMap(), new ByteArrayInputStream(new byte[0]));
-    }
-
-    private static String mime(String name) {
-        if (name.endsWith(".html")) return "text/html";
-        if (name.endsWith(".css")) return "text/css";
-        if (name.endsWith(".js")) return "application/javascript";
-        if (name.endsWith(".webp")) return "image/webp";
-        return "application/octet-stream";
     }
 }
