@@ -42,7 +42,7 @@ body.nocursor { cursor: none; }
 .date { font-size: 26px; font-weight: 600; color: var(--muted); margin-top: 6px; white-space: nowrap; }
 
 .kicker { font-size: 26px; font-weight: 700; letter-spacing: .2em; color: var(--label); margin: 0; }
-.room { font-size: 72px; font-weight: 800; line-height: 1.1; margin: 8px 0 0; }
+.room { font-size: 72px; font-weight: 800; line-height: 1.4; margin: 8px 0 0; }
 .portrait .room { font-size: 84px; }
 
 /* Everything except main keeps its size; main gets the rest and never pushes the footer off screen. */
