@@ -84,6 +84,7 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 
 1. Chép `kiem-tra-mang.bat` + `kiem-tra-mang.ps1` + `huong-dan-mang.md` vào USB. Cắm laptop vào switch của tầng cần kiểm tra (tắt Wi-Fi).
 2. Bấm đúp `kiem-tra-mang.bat` → nhập tên tầng, IP máy chủ, 2 cổng (Enter = mặc định). Không cần quyền quản trị.
+   Dùng MacBook: thư mục `macos` (`deploy/macos`, trong bộ cài là `dist\macos`), bấm đúp `kiem-tra-mang.command`.
 3. Đọc kết quả: dòng **KẾT LUẬN** cho biết standee ở tầng đó chạy được chưa; mỗi dòng `[LỖI]` kèm việc cần sửa (dòng `→`)
    (mở đường/ACL tới máy chủ cổng màn hình, dịch vụ tắt, IP không nằm trong `adminAllow`…). Mục 3 cho biết app có tự tìm
    thấy máy chủ không (cùng dải x.x.x.* với máy chủ) hay phải nhập tay IP trên standee.

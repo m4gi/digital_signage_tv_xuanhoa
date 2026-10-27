@@ -3,6 +3,9 @@
 Dùng kèm bộ kiểm tra `kiem-tra-mang.bat`: chạy ở tầng nào báo **[LỖI]** thì làm theo mục tương ứng, rồi chạy lại cho đến khi
 **KẾT LUẬN: CHẠY ĐƯỢC**.
 
+Kiểm tra bằng MacBook: dùng thư mục `macos`, bấm đúp `kiem-tra-mang.command` (cùng các bước, cùng báo cáo; cách chạy trong
+`macos/README.md`).
+
 Số liệu mẫu bên dưới lấy theo máy chủ hiện tại, thay cho đúng mạng của bạn:
 
 | | Giá trị mẫu |

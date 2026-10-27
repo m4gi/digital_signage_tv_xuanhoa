@@ -6,3 +6,5 @@
 *.webp binary
 android/gradlew eol=lf
 *.jar binary
+# Run by bash on macOS: CRLF breaks it.
+*.command text eol=lf

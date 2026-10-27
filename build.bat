@@ -41,6 +41,8 @@ copy /y deploy\install.ps1 dist\ >nul
 copy /y deploy\uninstall.bat dist\ >nul
 copy /y deploy\kiem-tra-mang.bat dist\ >nul
 copy /y deploy\kiem-tra-mang.ps1 dist\ >nul
+if not exist dist\macos mkdir dist\macos
+copy /y deploy\macos\* dist\macos\ >nul
 copy /y docs\huong-dan-mang.md dist\ >nul
 copy /y README.md dist\ >nul
 copy /y docs\screen-api.md dist\ >nul
