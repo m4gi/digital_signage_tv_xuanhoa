@@ -38,6 +38,11 @@ Check(merged.Theme == "formal" && merged.Clock == true && merged.FooterNote == "
 var oldSettings = JsonSerializer.Deserialize<DisplaySettings>("{\"theme\":\"formal\",\"contactEnabled\":true,\"contact\":\"x\"}", Json.Compact);
 Check(oldSettings?.Theme == "formal", "settings saved before the contact moved to meetings still load");
 
+Check(ServerConfig.OwnHost("10.188.44.125") && ServerConfig.OwnHost("[::1]") && ServerConfig.OwnHost("LOCALHOST")
+      && ServerConfig.OwnHost(Environment.MachineName), "admin port accepts the server's IP, localhost and machine name");
+Check(!ServerConfig.OwnHost("evil.example") && !ServerConfig.OwnHost(Environment.MachineName + ".evil.example") && !ServerConfig.OwnHost(""),
+      "admin port refuses other host names (DNS rebinding)");
+
 Check(Screen.WeekStart(new(2026, 10, 25)) == new DateOnly(2026, 10, 19), "Sunday belongs to the week starting Monday");
 Check(Screen.WeekStart(new(2026, 10, 19)) == new DateOnly(2026, 10, 19), "Monday is its own week start");
 

@@ -13,6 +13,13 @@ public sealed record ServerConfig(int ScreenPort, int AdminPort, IReadOnlyList<I
         return new(s.ScreenPort, s.AdminPort, s.AdminAllow.Select(ParseNetwork).ToList(), s.AdminAllow);
     }
 
+    // The admin port answers only to the server's own names: a web page whose domain is re-pointed at this
+    // server (DNS rebinding) sends its own domain as Host and is refused, even from an allowed admin PC.
+    public static bool OwnHost(string host) =>
+        IPAddress.TryParse(host.Trim('[', ']'), out _)
+        || host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        || host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+
     static IPNetwork ParseNetwork(string s)
     {
         s = s.Trim();

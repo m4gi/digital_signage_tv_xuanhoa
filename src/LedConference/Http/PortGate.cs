@@ -49,6 +49,11 @@ public static class PortGate
                 await Problem(403, "Không có quyền", $"Máy {ip} không nằm trong danh sách được phép quản trị.").ExecuteAsync(ctx);
                 return;
             }
+            if (!ServerConfig.OwnHost(req.Host.Host))
+            {
+                await Problem(403, "Không có quyền", "Hãy mở trang quản trị bằng địa chỉ IP của máy chủ.").ExecuteAsync(ctx);
+                return;
+            }
             if (!reading && req.Headers.Origin is [{ } origin]
                 && !(Uri.TryCreate(origin, UriKind.Absolute, out var o) && string.Equals(o.Authority, req.Host.Value, StringComparison.OrdinalIgnoreCase)))
             {

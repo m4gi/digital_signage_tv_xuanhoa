@@ -12,6 +12,7 @@
     <Compile Include="..\..\src\LedConference\Domain\*.cs" />
     <Compile Include="..\..\src\LedConference\Storage\*.cs" />
     <Compile Include="..\..\src\LedConference\Excel\*.cs" />
+    <Compile Include="..\..\src\LedConference\Http\ServerConfig.cs" />
   </ItemGroup>
 
   <ItemGroup>
