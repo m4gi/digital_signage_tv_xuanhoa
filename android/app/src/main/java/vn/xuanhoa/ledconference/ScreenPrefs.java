@@ -24,6 +24,11 @@ final class ScreenPrefs {
     String room() { return p.getString("room", ""); }
     String roomName() { return p.getString("roomName", ""); }
 
+    /** Degrees clockwise the page is turned (0, 90, 180, 270), for a screen mounted sideways that cannot rotate. */
+    int rotation() { return p.getInt("rotation", 0); }
+
+    void rotation(int degrees) { p.edit().putInt("rotation", degrees).apply(); }
+
     Set<String> known() {
         return p.getStringSet("known", Collections.<String>emptySet());
     }

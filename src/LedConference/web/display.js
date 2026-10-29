@@ -23,6 +23,8 @@
   var face = 0, faceStart = Date.now(); // rotating big card after a meeting: 0 = ĐÃ KẾT THÚC, 1 = next meeting
   var flipStart = Date.now(); // when the current page appeared; re-renders keep it, only a flip resets it
   var orientation = 'auto', effect = 'fadeUp', started = Date.now();
+  // Screen mounted sideways on a device that cannot rotate: ?rotate=90|180|270 (clockwise) turns the page itself.
+  var rotate = [90, 180, 270].indexOf(+params.get('rotate')) >= 0 ? +params.get('rotate') : 0;
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function now() { return new Date(Date.now() + offset); }
@@ -43,7 +45,7 @@
   }
 
   function layout() {
-    R.scale(orientation);
+    R.scale(orientation, rotate);
     if (data) render(data); // sizes differ between portrait and landscape: fit again
   }
 

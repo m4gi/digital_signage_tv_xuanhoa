@@ -58,15 +58,18 @@ var DisplayRender = (function () {
     $('logo').style.backgroundImage = 'url("' + logo + '")';
   }
 
-  // The stage is a fixed 1920x1080 (or 1080x1920) canvas scaled into the window.
-  function scale(orientation) {
-    var frame = $('screen'), w = frame.clientWidth, h = frame.clientHeight;
+  // The stage is a fixed 1920x1080 (or 1080x1920) canvas scaled into the window. rotate (90/180/270, clockwise)
+  // turns it for a screen mounted sideways whose device cannot rotate: the layout is picked for the turned frame.
+  function scale(orientation, rotate) {
+    var frame = $('screen'), fw = frame.clientWidth, fh = frame.clientHeight;
+    var side = rotate === 90 || rotate === 270, w = side ? fh : fw, h = side ? fw : fh;
     var o = orientation === 'auto' ? (h > w ? 'portrait' : 'landscape') : orientation;
     stage.classList.remove('portrait', 'landscape');
     stage.classList.add(o);
     var sw = o === 'portrait' ? 1080 : 1920, sh = o === 'portrait' ? 1920 : 1080;
     var k = Math.min(w / sw, h / sh);
-    stage.style.transform = 'translate(' + (w - sw * k) / 2 + 'px,' + (h - sh * k) / 2 + 'px) scale(' + k + ')';
+    var turn = rotate ? 'translate(' + (rotate === 270 ? 0 : fw) + 'px,' + (rotate === 90 ? 0 : fh) + 'px) rotate(' + rotate + 'deg) ' : '';
+    stage.style.transform = turn + 'translate(' + (w - sw * k) / 2 + 'px,' + (h - sh * k) / 2 + 'px) scale(' + k + ')';
   }
 
   function motion() { return !stage.classList.contains('nomotion'); }

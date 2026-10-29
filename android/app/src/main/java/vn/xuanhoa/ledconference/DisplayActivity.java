@@ -58,7 +58,12 @@ public class DisplayActivity extends Activity {
         setContentView(root);
 
         // Same-origin page: schedule and logo requests come back through PageServer.
-        web.loadUrl("http://" + PageServer.HOST + "/display.html?client=apk&room=" + Uri.encode(prefs.room()));
+        load();
+    }
+
+    private void load() {
+        web.loadUrl("http://" + PageServer.HOST + "/display.html?client=apk&room=" + Uri.encode(prefs.room())
+                + "&rotate=" + prefs.rotation());
     }
 
     @Override
@@ -85,9 +90,25 @@ public class DisplayActivity extends Activity {
     private void menu() {
         new AlertDialog.Builder(this)
                 .setTitle("Màn hình lịch họp")
-                .setItems(new String[]{"Đổi phòng / máy chủ", "Tải lại", "Tiếp tục chiếu"}, (d, i) -> {
+                .setItems(new String[]{"Đổi phòng / máy chủ", "Xoay màn hình", "Tải lại", "Tiếp tục chiếu"}, (d, i) -> {
                     if (i == 0) finish();
-                    else if (i == 1) web.reload();
+                    else if (i == 1) rotation();
+                    else if (i == 2) web.reload();
+                })
+                .show();
+    }
+
+    // The device may not rotate: the page turns itself (display.html?rotate=).
+    private void rotation() {
+        final int[] degrees = {0, 90, 180, 270};
+        int checked = java.util.Arrays.binarySearch(degrees, prefs.rotation());
+        new AlertDialog.Builder(this)
+                .setTitle("Xoay màn hình")
+                .setSingleChoiceItems(new String[]{"Không xoay", "Xoay 90° theo chiều kim đồng hồ", "Xoay 180°",
+                        "Xoay 90° ngược chiều kim đồng hồ"}, Math.max(checked, 0), (d, i) -> {
+                    d.dismiss();
+                    prefs.rotation(degrees[i]);
+                    load();
                 })
                 .show();
     }

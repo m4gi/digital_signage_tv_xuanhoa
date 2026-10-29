@@ -69,6 +69,8 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 4. Đổi phòng/máy chủ: bấm **Back** (remote) hoặc **giữ tay lâu** trên màn hình.
    Màn hình đặt ở **sảnh**: chọn thẻ **Tất cả phòng** – chiếu lần lượt lịch các phòng còn cuộc họp hôm nay.
 5. Để chắc chắn tự chạy khi bật nguồn: bấm nút Home, chọn **Lịch họp** làm ứng dụng màn hình chính → **Luôn luôn**.
+6. Màn hình treo **nằm ngang** mà máy không tự xoay: mở menu (Back hoặc giữ tay lâu) → **Xoay màn hình** → chọn góc xoay.
+   Lựa chọn lưu riêng trên từng máy, giữ nguyên sau khi tắt mở.
 
 **Cách 2 – Fully Kiosk Browser**
 
@@ -77,6 +79,7 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 3. Trong Fully Kiosk:
    - **Start URL**: link của phòng (màn hình sảnh: `http://192.168.1.10:8080/lobby`), lấy ở tab **Phòng & màn hình** (dòng “Link Fully Kiosk”, nút **Sao chép**), dạng `http://192.168.1.10:8080/room/P201`.
    - Bật **Launch on Boot**, **Keep Screen On**, **Fullscreen**, **Reload on network reconnect**.
+   - Màn hình treo nằm ngang mà máy không tự xoay: thêm `?rotate=90` (hoặc `270`, `180`; theo chiều kim đồng hồ) vào cuối link, ví dụ `http://192.168.1.10:8080/room/P201?rotate=90`.
 4. Tắt tự chạy của ứng dụng quảng cáo cũ. Rút điện cắm lại để kiểm tra màn hình tự lên lịch.
 5. Nên dùng bản Fully Kiosk PLUS để khoá thiết bị (Kiosk Mode có mã PIN thoát).
 
