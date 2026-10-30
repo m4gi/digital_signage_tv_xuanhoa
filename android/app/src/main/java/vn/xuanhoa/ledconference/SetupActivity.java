@@ -1,11 +1,16 @@
 package vn.xuanhoa.ledconference;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.role.RoleManager;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.GridView;
@@ -42,27 +47,34 @@ public class SetupActivity extends Activity {
     private String roomsOf; // server whose rooms are shown, null while listing servers
     private int scanId;
     private boolean launching; // display start is queued; skip the rescan in onRestart
+    private boolean askedBoot; // sent to the "Hiển thị trên ứng dụng khác" settings; show the schedule on return
+    private AlertDialog asking;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         prefs = new ScreenPrefs(this);
         buildUi();
-        if (prefs.configured()) startDisplay();
+        if (prefs.configured()) showOrAsk();
         else scan();
     }
 
-    // HOME pressed (or boot) while the display was running: singleTask cleared it, so start it again.
+    // HOME pressed, boot or the app icon while the display was running: singleTask cleared it, so start it again.
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (prefs.configured()) startDisplay();
+        if (prefs.configured()) showOrAsk();
     }
 
     // Back from the display ("Đổi phòng / máy chủ").
     @Override
     protected void onRestart() {
         super.onRestart();
+        if (askedBoot) {
+            askedBoot = false;
+            startDisplay();
+            return;
+        }
         showCurrent();
         if (!launching) scan();
     }
@@ -88,6 +100,46 @@ public class SetupActivity extends Activity {
     private void startDisplay() {
         launching = true;
         startActivity(new Intent(this, DisplayActivity.class));
+    }
+
+    // Without the permission the app does not come back after a power cut: ask on every launch until it is allowed.
+    private void showOrAsk() {
+        if (!bootBlocked()) {
+            startDisplay();
+            return;
+        }
+        // Android 15+ also sends the boot broadcast on the first start after install, so this can come twice.
+        if (asking != null && asking.isShowing()) return;
+        asking = new AlertDialog.Builder(this)
+                .setTitle("Tự mở khi bật máy")
+                .setMessage("Android chặn ứng dụng tự mở khi bật máy. Để màn hình tự chiếu lịch sau khi mất điện hoặc "
+                        + "khởi động lại: bấm Mở cài đặt, bật \"Hiển thị trên ứng dụng khác\" cho Lịch họp, rồi bấm Quay lại.")
+                .setPositiveButton("Mở cài đặt", (d, w) -> openBootSettings())
+                .setNegativeButton("Bỏ qua", (d, w) -> startDisplay())
+                .setCancelable(false)
+                .show();
+    }
+
+    /** Android 10+ ignores BootReceiver's start unless the overlay permission is allowed or this is the HOME app. */
+    private boolean bootBlocked() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Settings.canDrawOverlays(this)) return false;
+        // RoleManager, not resolveActivity(HOME): Android 11+ hides other launchers, so that would always find this app.
+        return !getSystemService(RoleManager.class).isRoleHeld(RoleManager.ROLE_HOME);
+    }
+
+    private void openBootSettings() {
+        Uri app = Uri.parse("package:" + getPackageName());
+        askedBoot = true;
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, app));
+        } catch (ActivityNotFoundException e) {
+            try { // some TV boxes have no such screen: the app's own settings page may still list it
+                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, app));
+            } catch (ActivityNotFoundException e2) {
+                askedBoot = false;
+                startDisplay();
+            }
+        }
     }
 
     private static String host(String base) {
@@ -339,6 +391,6 @@ public class SetupActivity extends Activity {
         prefs.choose(base, room.key, room.title);
         step(3);
         showCurrent();
-        startDisplay();
+        showOrAsk();
     }
 }

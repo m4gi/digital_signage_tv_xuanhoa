@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Android 10+ lets the boot receiver open the screen only with this ("Hiển thị trên ứng dụng khác"). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- Standees and TV boxes have no touch screen. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

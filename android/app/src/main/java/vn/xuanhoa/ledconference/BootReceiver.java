@@ -4,7 +4,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-/** Opens the app after power-on. Android 10+ may block this; setting the app as the default HOME app always works. */
+/**
+ * Opens the app after power-on. Android 10+ blocks this unless "Hiển thị trên ứng dụng khác" is allowed (asked by
+ * SetupActivity) or the app is the default HOME app.
+ */
 public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {

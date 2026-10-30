@@ -68,7 +68,11 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 3. Chọn phòng → màn hình bắt đầu chiếu, luôn sáng, toàn màn hình. Lần sau mở máy là chiếu ngay.
 4. Đổi phòng/máy chủ: bấm **Back** (remote) hoặc **giữ tay lâu** trên màn hình.
    Màn hình đặt ở **sảnh**: chọn thẻ **Tất cả phòng** – chiếu lần lượt lịch các phòng còn cuộc họp hôm nay.
-5. Để chắc chắn tự chạy khi bật nguồn: bấm nút Home, chọn **Lịch họp** làm ứng dụng màn hình chính → **Luôn luôn**.
+5. Tự chạy khi bật nguồn: Android 10 trở lên chặn ứng dụng tự mở, nên app hiện hộp **Tự mở khi bật máy** →
+   **Mở cài đặt** → bật **Hiển thị trên ứng dụng khác** cho Lịch họp → **Quay lại**. Hộp này hiện mỗi lần mở app cho
+   tới khi bật quyền. Bật xong, tắt máy bằng nút nguồn một lần cho Android lưu lại (rút điện ngay có thể mất cài đặt).
+   Cách khác: bấm nút Home, chọn **Lịch họp** làm ứng dụng màn hình chính → **Luôn luôn** (khi đó không hỏi nữa).
+   Máy của một số hãng (Xiaomi, Oppo…) còn mục **Tự khởi động** riêng trong cài đặt ứng dụng: bật cả mục đó.
 6. Màn hình treo **nằm ngang** mà máy không tự xoay: mở menu (Back hoặc giữ tay lâu) → **Xoay màn hình** → chọn góc xoay.
    Lựa chọn lưu riêng trên từng máy, giữ nguyên sau khi tắt mở.
 
