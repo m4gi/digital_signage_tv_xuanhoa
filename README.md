@@ -153,6 +153,22 @@ Sửa bằng Notepad trên máy chủ, sau đó **khởi động lại dịch v�
   giữ nguyên), mở tường lửa đúng cổng mới. Sau đó cập nhật link trên các màn hình nếu đổi cổng màn hình.
 - `data\themes.json` (màu các mẫu) sửa tay được, **không cần khởi động lại**: máy chủ tự nạp. File sai thì giữ mẫu cũ
   và báo lỗi trên trang quản trị.
+- `adminHosts`: tên miền được mở trang quản trị, ngoài IP, `localhost` và tên máy chủ. Dùng khi đưa trang quản trị
+  ra Internet qua Cloudflare Tunnel, ví dụ `"adminHosts": ["schedule.xuanhoa.io.vn"]`. Tên miền khác bị chặn.
+
+### Quản trị từ xa qua Cloudflare Tunnel (chỉ cổng quản trị; cổng màn hình giữ nội bộ)
+
+1. Cloudflare Zero Trust → **Networks → Tunnels** → tunnel trên máy chủ → **Public Hostname** → thêm
+   `schedule.xuanhoa.io.vn`, Type **HTTP**, URL **`127.0.0.1:<adminPort>`** (ghi IP, không ghi `localhost`).
+   **Không** thêm hostname cho cổng màn hình.
+2. **Bắt buộc**: Zero Trust → **Access → Applications → Self-hosted** cho `schedule.xuanhoa.io.vn`, policy chỉ cho
+   email người quản trị (One-time PIN). Trang quản trị không có đăng nhập; Access là lớp đăng nhập.
+3. Thêm hostname vào `adminHosts` (trên), khởi động lại dịch vụ.
+4. Yêu cầu qua tunnel được xét theo IP thật của người dùng (Cloudflare gửi trong `Cf-Connecting-Ip`), **không** được
+   coi là máy chủ: IP đó phải nằm trong `adminAllow`, và nhật ký ghi IP thật. Còn để `0.0.0.0/0` thì chỉ Access chặn
+   người lạ.
+5. Từ xa: xem trước màn hình vẫn chạy (lấy qua cổng quản trị); link màn hình luôn là IP LAN của máy chủ, chỉ dùng
+   được trong mạng nội bộ.
 
 ## 7. Dữ liệu, sao lưu, khôi phục
 

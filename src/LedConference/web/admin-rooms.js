@@ -204,10 +204,9 @@ async function pageRoom(app, code) {
 }
 
 // The real screen page in a frame, scaled like the device. ?preview=1 keeps it out of the screen status list.
+// Loaded from this (admin) port: the screen port is not reachable when the admin page comes through a tunnel.
 function previewCard(room, portrait) {
-  const url = new URL(room.screenUrl);
-  url.searchParams.set('preview', '1');
-  const frame = h('iframe', { src: url.href, title: 'Xem trước màn hình ' + room.code, loading: 'lazy' });
+  const frame = h('iframe', { src: new URL(room.screenUrl).pathname + '?preview=1', title: 'Xem trước màn hình ' + room.code, loading: 'lazy' });
   const st = screenStatus(room);
   return [
     h('section', { class: 'card' },

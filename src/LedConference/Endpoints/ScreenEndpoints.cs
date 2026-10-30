@@ -84,7 +84,7 @@ public static class ScreenEndpoints
         // Admin: link and status of the lobby screens (kept off the screen port: it lists device IPs).
         app.MapGet("/api/lobbyinfo", (HttpContext ctx, ServerConfig cfg, ScreenStatus status) => new
         {
-            screenUrl = $"http://{ctx.Request.Host.Host}:{cfg.ScreenPort}/lobby",
+            screenUrl = ScreenUrl(ctx, cfg, "/lobby"),
             screens = status.Of(ScreenStatus.LobbyKey, DateTime.Now),
         });
     }

@@ -18,7 +18,7 @@ public static class RoomEndpoints
                 r.Places,
                 r.Display,
                 todayCount = d.Meetings.Count(m => m.Date == today && m.Status != MeetingStatus.Cancelled && Screen.Matches(r, m.Place)),
-                screenUrl = $"http://{ctx.Request.Host.Host}:{cfg.ScreenPort}/room/{r.Code}",
+                screenUrl = ScreenUrl(ctx, cfg, $"/room/{r.Code}"),
                 screens = status.Of(r.Code, now),
             });
         });

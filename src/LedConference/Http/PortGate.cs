@@ -18,10 +18,12 @@ public static class PortGate
         var req = ctx.Request;
         var reading = HttpMethods.IsGet(req.Method) || HttpMethods.IsHead(req.Method);
         var onScreenPort = ctx.Connection.LocalPort == cfg.ScreenPort;
-        // The admin page shows a live preview of a room screen in an iframe (screen port inside admin port).
+        // The admin page previews a room screen in an iframe served by the admin port itself (same origin, so it
+        // also works through a tunnel where the screen port is not reachable); only those pages may be framed.
+        var framed = req.Path.StartsWithSegments("/room") || req.Path.StartsWithSegments("/lobby");
         headers.ContentSecurityPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " + (onScreenPort
             ? $"frame-ancestors 'self' http://*:{cfg.AdminPort}"
-            : $"frame-src 'self' http://{req.Host.Host}:{cfg.ScreenPort}; frame-ancestors 'none'");
+            : "frame-src 'self'; frame-ancestors " + (framed ? "'self'" : "'none'"));
 
         if (onScreenPort)
         {
@@ -49,7 +51,7 @@ public static class PortGate
                 await Problem(403, "Không có quyền", $"Máy {ip} không nằm trong danh sách được phép quản trị.").ExecuteAsync(ctx);
                 return;
             }
-            if (!ServerConfig.OwnHost(req.Host.Host))
+            if (!cfg.OwnHost(req.Host.Host))
             {
                 await Problem(403, "Không có quyền", "Hãy mở trang quản trị bằng địa chỉ IP của máy chủ.").ExecuteAsync(ctx);
                 return;

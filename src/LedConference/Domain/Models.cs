@@ -88,6 +88,9 @@ public sealed record Settings
     public int ScreenPort { get; init; } = 8080;
     public int AdminPort { get; init; } = 8081;
     public List<string> AdminAllow { get; init; } = [];
+    // Extra host names the admin port answers to, e.g. a Cloudflare tunnel hostname (IP, localhost and the
+    // machine name always work).
+    public List<string> AdminHosts { get; init; } = [];
     public Org Org { get; init; } = new("ỦY BAN NHÂN DÂN", "PHƯỜNG XUÂN HÒA");
     public DisplaySettings Display { get; init; } = DisplaySettings.Defaults;
     public Session Morning { get; init; } = new(new(7, 30), new(11, 30));

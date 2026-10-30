@@ -10,15 +10,22 @@ public sealed record ServerConfig(int ScreenPort, int AdminPort, IReadOnlyList<I
     {
         if (s.ScreenPort == s.AdminPort)
             throw new InvalidOperationException("ScreenPort và AdminPort trong data\\settings.json phải khác nhau.");
-        return new(s.ScreenPort, s.AdminPort, s.AdminAllow.Select(ParseNetwork).ToList(), s.AdminAllow);
+        return new(s.ScreenPort, s.AdminPort, s.AdminAllow.Select(ParseNetwork).ToList(), s.AdminAllow)
+        {
+            AdminHosts = s.AdminHosts.Select(h => h.Trim()).Where(h => h.Length > 0).ToList(),
+        };
     }
 
-    // The admin port answers only to the server's own names: a web page whose domain is re-pointed at this
-    // server (DNS rebinding) sends its own domain as Host and is refused, even from an allowed admin PC.
-    public static bool OwnHost(string host) =>
+    public IReadOnlyList<string> AdminHosts { get; init; } = [];
+
+    // The admin port answers only to the server's own names and the configured adminHosts (a Cloudflare tunnel
+    // hostname): a web page whose domain is re-pointed at this server (DNS rebinding) sends its own domain as
+    // Host and is refused, even from an allowed admin PC.
+    public bool OwnHost(string host) =>
         IPAddress.TryParse(host.Trim('[', ']'), out _)
         || host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-        || host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        || host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
+        || AdminHosts.Any(h => h.Equals(host, StringComparison.OrdinalIgnoreCase));
 
     static IPNetwork ParseNetwork(string s)
     {
