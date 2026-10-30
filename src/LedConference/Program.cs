@@ -22,6 +22,7 @@ builder.Services.AddSingleton(cfg);
 builder.Services.AddSingleton<ScreenStatus>();
 builder.Services.AddSingleton<LogoFiles>();
 builder.Services.AddSingleton<EmbeddedAssets>();
+builder.Services.AddSingleton<CloudflareAccess>();
 builder.Services.AddHostedService<ThemeWatcher>();
 builder.Services.AddHostedService<RetentionCleanup>();
 

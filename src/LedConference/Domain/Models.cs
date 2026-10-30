@@ -82,6 +82,9 @@ public sealed record Org(string Line1, string Line2);
 
 public sealed record Session(TimeOnly Start, TimeOnly End);
 
+// teamDomain: e.g. "abc.cloudflareaccess.com"; aud: the Access application's "Application Audience (AUD) Tag".
+public sealed record AccessSettings(string TeamDomain, string Aud);
+
 public sealed record Settings
 {
     // Ports and the admin allowlist are edited in data\settings.json only, then the service is restarted.
@@ -91,6 +94,8 @@ public sealed record Settings
     // Extra host names the admin port answers to, e.g. a Cloudflare tunnel hostname (IP, localhost and the
     // machine name always work).
     public List<string> AdminHosts { get; init; } = [];
+    // Cloudflare Access in front of the tunnel hostname: admin requests through the tunnel need its login token.
+    public AccessSettings? Access { get; init; }
     public Org Org { get; init; } = new("ỦY BAN NHÂN DÂN", "PHƯỜNG XUÂN HÒA");
     public DisplaySettings Display { get; init; } = DisplaySettings.Defaults;
     public Session Morning { get; init; } = new(new(7, 30), new(11, 30));

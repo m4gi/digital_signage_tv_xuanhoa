@@ -13,10 +13,12 @@ public sealed record ServerConfig(int ScreenPort, int AdminPort, IReadOnlyList<I
         return new(s.ScreenPort, s.AdminPort, s.AdminAllow.Select(ParseNetwork).ToList(), s.AdminAllow)
         {
             AdminHosts = s.AdminHosts.Select(h => h.Trim()).Where(h => h.Length > 0).ToList(),
+            Access = s.Access is { } a ? new(a.TeamDomain.Trim(), a.Aud.Trim()) : null,
         };
     }
 
     public IReadOnlyList<string> AdminHosts { get; init; } = [];
+    public AccessSettings? Access { get; init; }
 
     // The admin port answers only to the server's own names and the configured adminHosts (a Cloudflare tunnel
     // hostname): a web page whose domain is re-pointed at this server (DNS rebinding) sends its own domain as

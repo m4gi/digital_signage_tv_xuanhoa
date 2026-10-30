@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using LedConference;
@@ -44,6 +45,42 @@ Check(server.OwnHost("10.188.44.125") && server.OwnHost("[::1]") && server.OwnHo
 Check(!server.OwnHost("evil.example") && !server.OwnHost(Environment.MachineName + ".evil.example") && !server.OwnHost(""),
       "admin port refuses other host names (DNS rebinding)");
 Check(server.OwnHost("schedule.xuanhoa.io.vn") && !server.OwnHost("xuanhoa.io.vn"), "admin port accepts a configured tunnel hostname, nothing around it");
+
+// Cloudflare Access tokens, signed here with a throwaway key published the way Cloudflare does (JWKS).
+{
+    using var signer = RSA.Create(2048);
+    var pub = signer.ExportParameters(false);
+    string B64(byte[] b) => Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    string Part(object o) => B64(JsonSerializer.SerializeToUtf8Bytes(o));
+    var keys = AccessToken.ParseKeys(JsonSerializer.Serialize(new
+    {
+        keys = new[] { new { kid = "k1", kty = "RSA", alg = "RS256", n = B64(pub.Modulus!), e = B64(pub.Exponent!) } },
+    }));
+    const string aud = "app-aud", iss = "https://team.cloudflareaccess.com";
+    var now = DateTimeOffset.FromUnixTimeSeconds(1_800_000_000);
+    string Token(object header, object body)
+    {
+        var data = Part(header) + "." + Part(body);
+        return data + "." + B64(signer.SignData(Encoding.ASCII.GetBytes(data), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
+    }
+    var rs = new { alg = "RS256", kid = "k1" };
+    object Body(string audience = aud, string issuer = iss, long exp = 1_800_000_600) =>
+        new { aud = new[] { audience }, iss = issuer, exp, nbf = 1_799_999_000L, email = "admin@xuanhoa.gov.vn" };
+    string? V(string t) => AccessToken.Verify(t, keys, aud, iss, now);
+
+    var signedOk = Token(rs, Body());
+    Check(V(signedOk) == "admin@xuanhoa.gov.vn", "Access token signed by the team key, right app, in time: gives the email");
+    Check(V(Token(rs, Body(audience: "other-app"))) is null, "Access token for another application is refused");
+    Check(V(Token(rs, Body(issuer: "https://evil.cloudflareaccess.com"))) is null, "Access token from another team is refused");
+    Check(V(Token(rs, Body(exp: 1_799_999_000))) is null, "expired Access token is refused");
+    Check(V(Token(new { alg = "RS256", kid = "k2" }, Body())) is null, "Access token signed with an unknown key is refused");
+    var parts = signedOk.Split('.');
+    Check(V(parts[0] + "." + Part(new { aud = new[] { aud }, iss, exp = 1_800_000_600L, email = "attacker@x.com" }) + "." + parts[2]) is null,
+          "Access token with an edited body fails the signature");
+    Check(V(Part(new { alg = "none", kid = "k1" }) + "." + parts[1] + ".") is null, "unsigned (alg none) token is refused");
+    Check(V(Part(new { alg = "HS256", kid = "k1" }) + "." + parts[1] + "." + parts[2]) is null, "HS256 token is refused");
+    Check(V("") is null && V("abc") is null && V("a.b.c") is null, "garbage tokens are refused without throwing");
+}
 
 Check(Screen.WeekStart(new(2026, 10, 25)) == new DateOnly(2026, 10, 19), "Sunday belongs to the week starting Monday");
 Check(Screen.WeekStart(new(2026, 10, 19)) == new DateOnly(2026, 10, 19), "Monday is its own week start");

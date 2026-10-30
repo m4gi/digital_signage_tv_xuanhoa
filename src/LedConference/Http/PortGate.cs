@@ -4,7 +4,8 @@ using static LedConference.Api;
 namespace LedConference;
 
 // Screen port: read-only screen paths only, readable from any origin (the APK page is another origin).
-// Admin port: allowlisted IPs (loopback always), and writes only from the admin page itself.
+// Admin port: allowlisted IPs (loopback always) or, through the Cloudflare tunnel, a valid Access login;
+// writes only from the admin page itself.
 // Also sets the security headers every answer carries.
 public static class PortGate
 {
@@ -46,7 +47,21 @@ public static class PortGate
         else
         {
             var ip = ClientIp(ctx);
-            if (!IPAddress.IsLoopback(ip) && !cfg.AdminAllow.Any(n => n.Contains(ip)))
+            if (ViaTunnel(ctx))
+            {
+                // Through the tunnel the Access login decides, not adminAllow (remote admins have changing IPs).
+                var access = ctx.RequestServices.GetRequiredService<CloudflareAccess>();
+                var user = await access.Check(req.Headers["Cf-Access-Jwt-Assertion"].ToString());
+                if (user is null)
+                {
+                    await Problem(403, "Không có quyền", access.Configured
+                        ? "Cần đăng nhập Cloudflare Access để vào trang quản trị."
+                        : "Máy chủ chưa cấu hình mục access trong data\\settings.json nên không nhận truy cập qua tunnel.").ExecuteAsync(ctx);
+                    return;
+                }
+                ctx.Items[AccessUser] = user;
+            }
+            else if (!IPAddress.IsLoopback(ip) && !cfg.AdminAllow.Any(n => n.Contains(ip)))
             {
                 await Problem(403, "Không có quyền", $"Máy {ip} không nằm trong danh sách được phép quản trị.").ExecuteAsync(ctx);
                 return;

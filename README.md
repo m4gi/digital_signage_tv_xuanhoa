@@ -163,10 +163,20 @@ Sửa bằng Notepad trên máy chủ, sau đó **khởi động lại dịch v�
    **Không** thêm hostname cho cổng màn hình.
 2. **Bắt buộc**: Zero Trust → **Access → Applications → Self-hosted** cho `schedule.xuanhoa.io.vn`, policy chỉ cho
    email người quản trị (One-time PIN). Trang quản trị không có đăng nhập; Access là lớp đăng nhập.
-3. Thêm hostname vào `adminHosts` (trên), khởi động lại dịch vụ.
-4. Yêu cầu qua tunnel được xét theo IP thật của người dùng (Cloudflare gửi trong `Cf-Connecting-Ip`), **không** được
-   coi là máy chủ: IP đó phải nằm trong `adminAllow`, và nhật ký ghi IP thật. Còn để `0.0.0.0/0` thì chỉ Access chặn
-   người lạ.
+3. Thêm hostname vào `adminHosts` và mục `access` vào `data\settings.json`, khởi động lại dịch vụ:
+
+   ```json
+   "adminHosts": ["schedule.xuanhoa.io.vn"],
+   "access": { "teamDomain": "<team>.cloudflareaccess.com", "aud": "<Application Audience (AUD) Tag>" }
+   ```
+
+   `teamDomain`: Zero Trust → Settings → Custom Pages (hoặc phần đầu link trang đăng nhập Access). `aud`: Access →
+   Applications → ứng dụng → Overview → **Application Audience (AUD) Tag**.
+4. Máy chủ **tự kiểm tra vé đăng nhập Access** (`Cf-Access-Jwt-Assertion`, chữ ký RS256 bằng khoá của team, đúng
+   AUD, còn hạn) với mọi yêu cầu qua tunnel. Thiếu hoặc sai vé → 403, kể cả khi hostname bị publish nhầm không có
+   Access. Chưa có mục `access` → không nhận truy cập qua tunnel. Qua tunnel không xét `adminAllow` (người quản trị
+   ở xa đổi IP liên tục), nên `adminAllow` chỉ còn dùng cho mạng LAN: thu hẹp về các máy quản trị trong LAN.
+   Nhật ký ghi IP thật kèm email đăng nhập.
 5. Từ xa: xem trước màn hình vẫn chạy (lấy qua cổng quản trị); link màn hình luôn là IP LAN của máy chủ, chỉ dùng
    được trong mạng nội bộ.
 

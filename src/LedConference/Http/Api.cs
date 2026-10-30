@@ -25,6 +25,16 @@ public static class Api
         return ip;
     }
 
+    // Came through the Cloudflare tunnel: cloudflared on this machine, carrying the visitor's address.
+    public static bool ViaTunnel(HttpContext ctx)
+    {
+        var ip = ctx.Connection.RemoteIpAddress ?? IPAddress.None;
+        return IPAddress.IsLoopback(ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip) && ctx.Request.Headers.ContainsKey("Cf-Connecting-Ip");
+    }
+
+    // Set by the port gate for tunnel requests: who signed in to Cloudflare Access.
+    public const string AccessUser = "accessUser";
+
     // Screen links (for the app, Fully Kiosk, "Mở màn hình") always use the server's LAN address, even when the
     // admin page is opened through a tunnel hostname or as localhost, where the screen port is not reachable.
     public static string ScreenUrl(HttpContext ctx, ServerConfig cfg, string path)
@@ -50,7 +60,9 @@ public static class Api
         }
     });
 
-    public static string Ip(HttpContext ctx) => ClientIp(ctx).ToString();
+    // Who made a change, for the audit log and "updated by": the IP, plus the Access email through the tunnel.
+    public static string Ip(HttpContext ctx) =>
+        ClientIp(ctx) + (ctx.Items[AccessUser] is string user ? " " + user : "");
 
     public static string Clean(string? s) => (s ?? "").Trim();
 
