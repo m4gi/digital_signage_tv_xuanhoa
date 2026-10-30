@@ -69,8 +69,7 @@ Chạy thử không cần cài dịch vụ: bấm đúp `LedConference.exe` (c�
 4. Đổi phòng/máy chủ: bấm **Back** (remote) hoặc **giữ tay lâu** trên màn hình.
    Màn hình đặt ở **sảnh**: chọn thẻ **Tất cả phòng** – chiếu lần lượt lịch các phòng còn cuộc họp hôm nay.
 5. Để chắc chắn tự chạy khi bật nguồn: bấm nút Home, chọn **Lịch họp** làm ứng dụng màn hình chính → **Luôn luôn**.
-6. Màn hình treo **nằm ngang**: mở menu (Back hoặc giữ tay lâu) → **Xoay màn hình** → **Ngang** (ngược đầu thì chọn **Ngang ngược**).
-   App xin Android xoay cả cửa sổ (chuột, menu, màn hình cài đặt xoay theo); máy nào khoá hướng thì app tự xoay phần lịch.
+6. Màn hình treo **nằm ngang** mà máy không tự xoay: mở menu (Back hoặc giữ tay lâu) → **Xoay màn hình** → chọn góc xoay.
    Lựa chọn lưu riêng trên từng máy, giữ nguyên sau khi tắt mở.
 
 **Cách 2 – Fully Kiosk Browser**

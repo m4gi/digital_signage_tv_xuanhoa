@@ -2,7 +2,6 @@ package vn.xuanhoa.ledconference;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.hardware.display.DisplayManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -27,7 +26,6 @@ public class DisplayActivity extends Activity {
     private PageServer pages;
     private WebView web;
     private View splash;
-    private int pageRotation; // the turn the loaded page does itself (display.html?rotate=)
 
     @Override
     protected void onCreate(Bundle state) {
@@ -39,20 +37,8 @@ public class DisplayActivity extends Activity {
                 | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
         prefs = new ScreenPrefs(this);
         pages = new PageServer(getAssets(), prefs);
-        Rotation.request(this, prefs.rotation());
         open();
-        ((DisplayManager) getSystemService(DISPLAY_SERVICE)).registerDisplayListener(turned, null);
     }
-
-    // Android finished (or refused) the rotation asked for: let the page turn whatever is still missing.
-    // A display listener, not onConfigurationChanged: a 180° turn changes no configuration.
-    private final DisplayManager.DisplayListener turned = new DisplayManager.DisplayListener() {
-        @Override public void onDisplayChanged(int id) {
-            if (Rotation.remaining(DisplayActivity.this, prefs.rotation()) != pageRotation) load();
-        }
-        @Override public void onDisplayAdded(int id) {}
-        @Override public void onDisplayRemoved(int id) {}
-    };
 
     private void open() {
         web = new WebView(this);
@@ -76,9 +62,8 @@ public class DisplayActivity extends Activity {
     }
 
     private void load() {
-        pageRotation = Rotation.remaining(this, prefs.rotation());
         web.loadUrl("http://" + PageServer.HOST + "/display.html?client=apk&room=" + Uri.encode(prefs.room())
-                + "&rotate=" + pageRotation);
+                + "&rotate=" + prefs.rotation());
     }
 
     @Override
@@ -113,16 +98,16 @@ public class DisplayActivity extends Activity {
                 .show();
     }
 
+    // The device may not rotate: the page turns itself (display.html?rotate=).
     private void rotation() {
         final int[] degrees = {0, 90, 180, 270};
         int checked = java.util.Arrays.binarySearch(degrees, prefs.rotation());
         new AlertDialog.Builder(this)
                 .setTitle("Xoay màn hình")
-                .setSingleChoiceItems(new String[]{"Dọc (mặc định của máy)", "Ngang", "Dọc ngược", "Ngang ngược"},
-                        Math.max(checked, 0), (d, i) -> {
+                .setSingleChoiceItems(new String[]{"Không xoay", "Xoay 90° theo chiều kim đồng hồ", "Xoay 180°",
+                        "Xoay 90° ngược chiều kim đồng hồ"}, Math.max(checked, 0), (d, i) -> {
                     d.dismiss();
                     prefs.rotation(degrees[i]);
-                    Rotation.request(this, degrees[i]);
                     load();
                 })
                 .show();
@@ -130,7 +115,6 @@ public class DisplayActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        ((DisplayManager) getSystemService(DISPLAY_SERVICE)).unregisterDisplayListener(turned);
         web.destroy();
         super.onDestroy();
     }

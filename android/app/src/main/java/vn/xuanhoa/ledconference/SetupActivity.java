@@ -47,10 +47,8 @@ public class SetupActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         prefs = new ScreenPrefs(this);
-        Rotation.request(this, prefs.rotation());
         buildUi();
-        // state != null: rebuilt after a rotation (back from the display), stay on this screen.
-        if (prefs.configured() && state == null) startDisplay();
+        if (prefs.configured()) startDisplay();
         else scan();
     }
 
